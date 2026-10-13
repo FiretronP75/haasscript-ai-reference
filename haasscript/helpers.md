@@ -16,6 +16,8 @@
 
 # Array Helpers
 
+The array helpers accept Lua tables, HaasNumberCollections and engine series (price data) alike, with identical results; the result keeps the input's form. Exceptions: `ArrayRemove` accepts Lua tables only, and `ArrayConcat` needs an engine collection first when mixing forms.
+
 ## ArrayAdd
 
 ```lua
@@ -33,7 +35,7 @@ Adds an element to an existing array.
 
 **Returns:** `dynamic`
 
-Returns the input array.
+Returns a new array; the input is not modified. A Lua table in gives a Lua table out; a series in gives a series out.
 
 ---
 
@@ -66,7 +68,7 @@ Returns true if the input has any elements or if 'value' is defined when any of 
 ArrayConcat(array1, array2)
 ```
 
-Concatenates two arrays.
+Concatenates two arrays; the first array's elements come first. If `array1` is a Lua table, `array2` must be a Lua table too: a Lua table followed by a HaasNumberCollection or engine series stops the script ("Object reference not set to an instance of an object.") without `pcall` catching it. To mix forms, put the engine collection first; the result is then an engine collection.
 
 **Parameters:**
 
@@ -141,7 +143,7 @@ Returns a new list of indices of the matching values. Matching-rules specified b
 
 **Returns:** `dynamic`
 
-Returns the list.
+Returns the list of indices; an empty list when nothing matches. The index base depends on the input: 1-based for a Lua table, 0-based for a HaasNumberCollection or an engine series (price data). Add 1 before indexing a series with the result.
 
 ---
 
@@ -165,6 +167,16 @@ Gets the value on a specific index. A negative index will take from the end of t
 **Returns:** `dynamic`
 
 Return the value on that index.
+
+Behavior by element type:
+
+- Numbers: returned as a number.
+- Pairs (for example the elements of `GetOrderbookAsk()`): only the first component is returned. `ArrayGet(GetOrderbookAsk(), 1)` is the best ask price; use `GetOrderbookAsk()[1]` for the pair and `ArrayGet(pair, 2)` for the amount.
+- Enums in an engine container: returned as the enum's numeric code (`ArrayGet(UserPositionContainer(), 8)` gives a number where `[8]` gives `NoPosition`). Enums in a Lua table are returned unchanged. Use brackets to get the enum.
+- Booleans: returned unchanged from a Lua table. A boolean element of an engine collection (for example `ArrayGet(Compare(2, 1), 1)`) stops the script with "Unable to cast Boolean to a numeric value." Use brackets.
+- Strings: stop the script with "Unable to cast <value> to a numeric value." Read string fields with brackets or by name.
+
+The two errors above are not caught by `pcall`, and a backtest fails.
 
 ---
 
@@ -205,7 +217,7 @@ Remove an item from the end of an array.
 
 **Returns:** `dynamic`
 
-Returns the input array.
+Returns a new array; the input is not modified. A Lua table in gives a Lua table out; a series in gives a series out.
 
 ---
 
@@ -221,12 +233,12 @@ Removes an element from a specified index.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `input` | `dynamic` | Yes | Source data. |
+| `input` | `dynamic` | Yes | Source data. Lua tables only: a HaasNumberCollection or an engine series stops the script ("Object reference not set to an instance of an object.") without `pcall` catching it. Convert to a Lua table first. |
 | `index` | `number` | Yes | Index of the element to remove. |
 
 **Returns:** `dynamic`
 
-Returns the input array.
+Returns a new array; the input is not modified. A Lua table in gives a Lua table out; a series in gives a series out.
 
 ---
 
@@ -299,7 +311,7 @@ Returns the sorted array.
 ArraySum(input, [key])
 ```
 
-Computes the sum of the array. Can be used in combination with a list of numbers or container results like GetAllOpenOrders() or GetAllFinishedOrders().
+Computes the sum of the array. Can be used in combination with a list of numbers or container results like GetAllOpenOrders() or GetAllFilledOrders().
 
 **Parameters:**
 
@@ -388,7 +400,7 @@ NewArray([elements[]])
 
 **Aliases:** `NewList`
 
-Creates an array.
+Creates an array. Not available in scripts on TradeServer Cloud: `NewArray` and `NewList` are nil there (calling them fails with "attempt to call a nil value"). Use a Lua table literal such as `{1, 2, 3}`.
 
 **Parameters:**
 
@@ -410,7 +422,7 @@ NewSortedArray([elements1], [elements2], [elements3], [elements4], [elements5], 
 
 **Aliases:** `NewSortedList`
 
-Creates a sorted array.
+Creates a sorted array. Not available in scripts on TradeServer Cloud: `NewSortedArray` is nil there. Build a Lua table and sort it with `table.sort` or `ArraySort`.
 
 **Parameters:**
 
@@ -495,9 +507,9 @@ Checks if input1 is below, equal to or above input2.
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | Yes | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `dynamic`
 
-Returns a list with booleans.
+Returns a list of 3 booleans for the newest pair of values: `[1]` isAbove (input1 is above input2), `[2]` isEqual, `[3]` isBelow.
 
 **Container fields** (accessible by name or 1-based index):
 
@@ -727,7 +739,7 @@ Validates all values on being true.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `values[]` | `...boolean` | Yes | The boolean to compare. |
+| `values[]` | `...boolean` | Yes | The booleans to compare, as separate arguments. A Lua table is not expanded: only its first element is checked (`IsTrue({true, false})` = true). A boolean engine collection, such as the result of `Compare()`, stops the script without `pcall` catching it. |
 
 **Returns:** `boolean`
 
@@ -768,7 +780,7 @@ Validates if any of the values is true.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `values[]` | `...boolean` | Yes | The boolean to compare. |
+| `values[]` | `...boolean` | Yes | The booleans to compare, as separate arguments. A Lua table is not expanded: only its first element is checked (`Or({false, true})` = false). A boolean engine collection, such as the result of `Compare()`, stops the script without `pcall` catching it. |
 
 **Returns:** `boolean`
 
@@ -799,7 +811,7 @@ Returns true.
 Branch(input)
 ```
 
-Validates the input boolean and sets the output result accordingly. This block can be useful in decision-based flows.
+Validates the input boolean and sets the output result accordingly. This block can be useful in decision-based flows. Not available in scripts on TradeServer Cloud: the name `Branch` is nil there.
 
 **Parameters:**
 
@@ -891,6 +903,8 @@ Returns the first set input value or doesn't execute.
 
 # Mathematical
 
+The mathematical helpers return a `HaasNumberCollection`: a number input gives a 1-element series (`Abs(-5)` returns a series whose element 1 is 5), and series inputs give a series as long as the shortest series input, computed element by element. Convert the result to a plain number (§7.3 of the development skill) where Lua requires one, for example as a `for` limit.
+
 ## Abs
 
 ```lua
@@ -905,7 +919,7 @@ Calculates an absolute/positive number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns an absolute/positive number.
 
@@ -925,7 +939,7 @@ Calculates the angle whose cosine is the specified number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | A number representing a cosine, that must be greater than or equal to -1, but less than or equal to 1. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the angle whose cosine is the specified number.
 
@@ -948,7 +962,7 @@ Adds numbers/tables and returns the result number/table.
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | No | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the total sum of a single value is provide, adds the 2 values if there are 2 provided.
 
@@ -991,7 +1005,7 @@ Calculates the angle whose sine is the specified number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the angle whose sine is the specified number.
 
@@ -1011,7 +1025,7 @@ Calculates the angle whose tangent is the specified number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | A number representing a tangent. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the angle whose tangent is the specified number.
 
@@ -1032,7 +1046,7 @@ Calculates the angle whose tangent is the quotient of two specified numbers.
 | `input1` | `number|table` | Yes | The y coordinate of a point. |
 | `input2` | `number|table` | Yes | The x coordinate of a point. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the angle whose tangent is the quotient of two specified numbers.
 
@@ -1053,7 +1067,7 @@ Calculates the average value of the array, two numbers or averages between 2 arr
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | No | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the average value of the array, two numbers or averages between 2 arrays.
 
@@ -1065,18 +1079,18 @@ Returns the average value of the array, two numbers or averages between 2 arrays
 Average2(input, [period])
 ```
 
-Calculates the average value of the array for a certain period.
+Calculates the rolling average of the array over a period, or the average of the whole array when no period is given.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `input` | `HaasNumberCollection` | Yes | Source values. |
-| `period` | `number` | No | Period length. |
+| `period` | `number` | No | Window length of the rolling average. Without it, the overall average is returned. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
-Returns the average value of the array for a certain period.
+Returns a series of rolling averages of length count - period + 1 (`Average2({1, 2, 3, 4}, 2)` = 1.5, 2.5, 3.5), or a 1-element series without a period (`Average2({1, 2, 3, 4})` = 2.5).
 
 ---
 
@@ -1094,7 +1108,7 @@ Calculates the smallest integral value greater than or equal to the specified nu
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the smallest integral value greater than or equal to the specified number.
 
@@ -1106,7 +1120,7 @@ Returns the smallest integral value greater than or equal to the specified numbe
 Change(prices)
 ```
 
-Calculates the absolute price changes between the values.
+Calculates the signed change (newer minus older) between adjacent values; the result has one element fewer than the input.
 
 **Parameters:**
 
@@ -1136,7 +1150,7 @@ Calculates the number or table of numbers clamped between the specified minimum 
 | `min` | `number` | Yes | Minimum value. |
 | `max` | `number` | Yes | Maximum value. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns number or table of numbers clamped between the specified minimum and maximum.
 
@@ -1176,7 +1190,7 @@ Calculates the cosine of the specified angle.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the cosine of the specified angle.
 
@@ -1196,7 +1210,7 @@ Calculates the hyperbolic cosine of the specified angle.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the hyperbolic cosine of the specified angle.
 
@@ -1219,7 +1233,7 @@ Calculates the percentage between input1 and input2 or the percentage change bet
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | No | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the percentage between input1 and input2. When for example input1 is 5 and input2 is 6, 20 is returned.
 
@@ -1240,7 +1254,7 @@ Divides input1 with input2. If one of the parameters is a single value, the othe
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | Yes | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the divided numbers/tables.
 
@@ -1260,7 +1274,7 @@ Calculates 'e' raised to the specified power.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns 'e' raised to the specified power.
 
@@ -1272,7 +1286,7 @@ Returns 'e' raised to the specified power.
 FilterAbove(input, threshold)
 ```
 
-Filters out all values above a specific value.
+Filters out all values strictly above a specific value; values equal to it are kept (`FilterAbove({5, 6, 4}, 5)` = 5, 4).
 
 **Parameters:**
 
@@ -1293,7 +1307,7 @@ Returns the filtered input.
 FilterBelow(input, threshold)
 ```
 
-Filters out all values below a specific value.
+Filters out all values strictly below a specific value; values equal to it are kept (`FilterBelow({5, 6, 4}, 5)` = 5, 6).
 
 **Parameters:**
 
@@ -1322,7 +1336,7 @@ Calculates the largest integral value less than or equal to the specified number
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the largest integral value less than or equal to the specified number.
 
@@ -1420,16 +1434,16 @@ Returns the lowest values within lookback period.
 Ln(input1, [input2])
 ```
 
-Calculates the logarithm of a specified number.
+Calculates the logarithm of a specified number. Without input2 it is the natural logarithm; input2 is the base (`Ln(8, 2)` = 3).
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `input1` | `number|table` | Yes | Source value(s) 1. |
-| `input2` | `number|table` | No | Source value(s) 2. |
+| `input2` | `number|table` | No | Logarithm base. Default is the natural logarithm. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the logarithm of a specified number.
 
@@ -1449,7 +1463,7 @@ Calculates the base 10 logarithm of a specified number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the base 10 logarithm of a specified number.
 
@@ -1463,13 +1477,15 @@ Max(values[])
 
 Returns the maximum value. If the input is a single array, it returns the biggest number in that array (single value). If inputs are both numbers, it returns the biggest number (single value). If inputs are array and number, it returns the biggest number (array[1] vs number, single value). If inputs are both arrays, it returns an array of the biggest numbers per cell (array, length determined by the shorter array).
 
+`Max(series, 20)` is not the highest value of the last 20 bars; it compares only the newest element with 20. Use `GetHigh(series, 20)` for the highest of the last 20 values (and `GetLow` instead of `Min`).
+
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `values[]` | `NumberOrTableParams` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the biggest number or an array of biggest numbers per cell.
 
@@ -1481,7 +1497,7 @@ Returns the biggest number or an array of biggest numbers per cell.
 Min(values[])
 ```
 
-Returns the minimum value. If the input is a single array, it returns the minimum in that array (single value). If inputs are both numbers, it returns the smallest number (single value). If inputs are array and number, it returns the smallest number (single value). If inputs are both arrays, it returns an array of the smallest numbers per cell (array, length determined by shortest array)
+Returns the minimum value. If the input is a single array, it returns the minimum in that array (single value). If inputs are both numbers, it returns the smallest number (single value). If inputs are array and number, it returns the smallest number (array[1] vs number, single value). If inputs are both arrays, it returns an array of the smallest numbers per cell (array, length determined by shortest array)
 
 **Parameters:**
 
@@ -1489,7 +1505,7 @@ Returns the minimum value. If the input is a single array, it returns the minimu
 |------|------|----------|-------------|
 | `values[]` | `NumberOrTableParams` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the smallest number or an array of smallest numbers per cell.
 
@@ -1512,7 +1528,7 @@ Multiplies input1 with input2. If one of the parameters is a single value, the o
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | Yes | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the multiplied numbers/tables.
 
@@ -1556,7 +1572,7 @@ Constant value: the number of PI.
 
 **Type:** `number`
 
-Returns PI (3.14159265359).
+Returns PI rounded to 11 decimals (3.14159265359). `math.pi` holds the full double-precision value.
 
 ---
 
@@ -1575,7 +1591,7 @@ Calculates a specified number/table raised to the specified power number/table.
 | `value` | `number|table` | Yes | The base value |
 | `power` | `number|table` | Yes | The power value |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns a specified number/table raised to the specified power number/table.
 
@@ -1608,7 +1624,7 @@ Returns a random number.
 ReplaceAbove(input, threshold, newValue)
 ```
 
-Replaces any value above a specific value with another value.
+Replaces any value strictly above a specific value with another value; values equal to it are kept (`ReplaceAbove({5, 6}, 5, 0)` = 5, 0).
 
 **Parameters:**
 
@@ -1661,7 +1677,7 @@ Rounds a value (or values if table) to the nearest integer or to the specified n
 | `input` | `number|table` | Yes | Source value(s). |
 | `digits` | `number` | Yes | Number of digits after decimal point. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the rounded number.
 
@@ -1679,7 +1695,7 @@ Constant value: 1 Satoshi (=Epsilon).
 
 **Type:** `number`
 
-Returns 1 Satoshi (=Epsilon).
+Returns 1 Satoshi (=Epsilon): 0.00000001 (1E-08).
 
 ---
 
@@ -1717,7 +1733,7 @@ Calculates an integer that indicates the sign of a number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns an integer that indicates the sign of a number.
 
@@ -1737,7 +1753,7 @@ Calculates the sine of the specified angle.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the sine of the specified angle.
 
@@ -1757,7 +1773,7 @@ Calculates the hyperbolic sine of the specified angle.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the hyperbolic sine of the specified angle.
 
@@ -1777,7 +1793,7 @@ Calculates the square root of a specified number.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the square root of a specified number.
 
@@ -1798,7 +1814,7 @@ Subtracts numbers/tables and returns the result number/table.
 | `input1` | `number|table` | Yes | Source value(s) 1. |
 | `input2` | `number|table` | Yes | Source value(s) 2. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Calculates the subtracted numbers/tables.
 
@@ -1841,7 +1857,7 @@ Calculates the tangent of the specified angle.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the tangent of the specified angle.
 
@@ -1861,7 +1877,7 @@ Calculates the hyperbolic tangent of the specified angle.
 |------|------|----------|-------------|
 | `input` | `number|table` | Yes | Source value(s). |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the hyperbolic tangent of the specified angle.
 
@@ -1882,7 +1898,7 @@ Truncates a value (or values if table) to the nearest integer or to the specifie
 | `input` | `number|table` | Yes | Source value(s). |
 | `digits` | `number` | Yes | Number of digits after decimal point. |
 
-**Returns:** `unknown`
+**Returns:** `HaasNumberCollection`
 
 Returns the truncated number.
 
@@ -1941,11 +1957,11 @@ Loads a value saved on the specified key.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `key` | `string` | Yes | Unique identifier. |
-| `defaultValue` | `dynamic` | No | Default value for when no data is saved on the key. Default is nil. |
+| `defaultValue` | `dynamic` | No | Default value returned when no data is saved on the key; it is also saved on the key, so later calls return it (even with another default) until `Delete`. Default is nil. |
 
 **Returns:** `dynamic`
 
-Returns the saved value or nil.
+Returns the saved value; if nothing is saved, the defaultValue (which is then saved), or nil when no defaultValue is given.
 
 ---
 
@@ -1962,11 +1978,13 @@ Create a message in the log.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `message` | `dynamic` | Yes | Message to log. |
-| `color` | `string` | No | The color of the log message. |
+| `color` | `string` | No | The color of the log message: a color constant (`Red`, `Green(50)` for 50 % opacity), `Color(r, g, b, [a])` (alpha 0–255), or any CSS color string (named, `#00FF00`, `rgb(0, 128, 255)`, `rgba(255, 0, 0, 0.5)`). The whole line is colored. |
 | `prefix` | `string` | No | Optional prefix for the log message |
 | `suffix` | `string` | No | Optional suffix for the log message |
 
 **Returns:** `void`
+
+Given a series, `Log` prints the whole series as a bracketed list; color, prefix and suffix still apply: `Log(HNC(3, 7), White, "PREFIX ", " SUFFIX")` logs `PREFIX [7.0, 7.0, 7.0] SUFFIX`.
 
 ---
 
@@ -1994,7 +2012,7 @@ Create an error message in the log.
 LogWalletError(message)
 ```
 
-Create a warning message in the log and activates the trade amount error.
+Create a warning message in the log ("WARNING: <message>") and activates the trade amount error. It does not block trading: managed and unmanaged orders on later updates are still executed, in backtests and live.
 
 **Parameters:**
 
@@ -2030,14 +2048,20 @@ Create a warning message in the log.
 Save(key, value)
 ```
 
-Saves a value on a specific key. This value can be retrieved with Load(). A maximum of 10.000 keys can be stored.
+Saves a value on a specific key. This value can be retrieved with Load(). A maximum of 10.000 keys can be stored. Storing a key beyond the limit stops the script with "Bot memory limitation reached. Maximum number of keys reached. Cannot store more than 10000 values"; `pcall` does not catch it, and a backtest fails. Nothing is dropped silently. Avoid keys derived from an unbounded counter.
+
+Numbers, strings, booleans (including false) and Lua tables, nested ones included, round-trip unchanged. A number saved as a plain number is loaded as a plain Lua number.
+
+Saving a collection slice such as `close[2]` stores the whole remaining series (for example 499 values), without an error. The loaded value supports arithmetic but fails as a `for` limit ("'for' limit must be a number"). Use `ArrayGet(close, 2)` to save a single number.
+
+Inside a custom command, values are stored separately from the calling script and separately for each call site of the command. They persist between calls within a backtest and start fresh in each backtest. A command therefore cannot share a total across its call sites through `Save`/`Load`.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `key` | `string` | Yes | Unique identifier. |
-| `value` | `dynamic` | Yes | The value to store. |
+| `value` | `dynamic` | Yes | The value to store. Must not be nil: `Save(key, nil)` aborts the backtest ("Save(): Attempting to call with 'null' value for value.") and `pcall` cannot catch it. Use `Delete(key)` to clear a key. |
 
 **Returns:** `void`
 
@@ -2049,7 +2073,7 @@ Saves a value on a specific key. This value can be retrieved with Load(). A maxi
 SessionGet(key)
 ```
 
-Gets a value stored in the session memory.
+Gets a value stored in the session memory. Visual-editor block: in scripts on TradeServer Cloud the name is nil. In scripts, use locals within an update and Save/Load between updates.
 
 **Parameters:**
 
@@ -2069,7 +2093,7 @@ Returns a value stored in the session memory.
 SessionSet(key, value)
 ```
 
-Stores a value for this session only.
+Stores a value for this session only. Visual-editor block: in scripts on TradeServer Cloud the name is nil. In scripts, use locals within an update and Save/Load between updates.
 
 **Parameters:**
 
@@ -2095,9 +2119,13 @@ Write data to a file that can be exported later. Only records during a backtest.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `name` | `string` | Yes | Name of the file to write the data to. |
-| `values` | `...string` | Yes | The values to write to the file. Needs to match the number of headers defined in InitExportData. |
+| `values` | `...string` | Yes | The values to write to the file. Needs to match the number of headers defined in InitExportData. Any value type is accepted: a price or indicator series writes only its newest element ([1]), a signal enum its name (e.g. `SignalLong`), a boolean `True`/`False`, `Time()` Unix seconds, numbers and strings as is. |
 
 **Returns:** `void`
+
+> **Warning:** A row whose number of values differs from the headers is a fatal error. The engine logs "WriteExportData(): Error appending row to file '<name>'. Expected <n> values, got <m> values.", the rest of the update runs, and the backtest then fails with no report. `pcall` does not catch it.
+
+Rows written before a backtest fails are kept and can still be retrieved.
 
 ---
 
@@ -2141,9 +2169,11 @@ Creates an item in the bot's custom reports. Use group="Override" to override st
 
 **Returns:** `void`
 
+In a backtest the custom report is rebuilt on every update: only the rows and overrides written on the last update remain in the result. Call `CustomReport` on every update or inside `Finalize`. Values are stored as strings. Overriding a profit field (e.g. `RealizedProfit`) does not recompute `ROI`.
+
 **Overriding built-in report values:**
 
-When `group` is `"Override"` and `key` matches a supported built-in field, the bot's report displays the custom `value` instead of the calculated value. Overrides also appear under an **Override** group in the Custom Report section for visibility. Pass `nil` as the value to clear an override.
+When `group` is `"Override"` and `key` matches a supported built-in field, the bot's report displays the custom `value` instead of the calculated value. Overrides also appear under an **Override** group in the Custom Report section for visibility. Never pass `nil` as the value: it fails the script. To remove an override, stop calling CustomReport for that key; passing 0 sets the field to 0 and does not clear the override.
 
 Supported keys: `GrossProfit`, `FeeCosts`, `RealizedProfit`, `UnrealizedProfit`, `ROI`, `BuyAndHodl`, `ClosedPositions`, `WinningPositions`, `AvgProfit`, `AvgPositionSize`, `AvgPositionMargin`, `FilledOrders`, `PartiallyFilledOrders`, `CancelledOrders`, `FailedOrders`, `BiggestWin`, `BiggestLoss`, `SharpeRatio`, `SortinoRatio`, `WinPercentage`, `ProfitFactor`
 
@@ -2153,8 +2183,7 @@ CustomReport("RealizedProfit", myNetPnL, "Override")
 CustomReport("ROI", myROI, "Override")
 CustomReport("FeeCosts", myTotalFees, "Override")
 
--- Clear an override
-CustomReport("ROI", nil, "Override")
+-- To clear an override, stop writing it (never pass nil)
 ```
 
 ---
@@ -2212,7 +2241,7 @@ HNC is an array on which match can be applied directly. This is not position wit
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `size` | `number` | No | The size of the array. Default 0. |
-| `value` | `number` | No | The default value when size is set. Default is 0. |
+| `value` | `number` | No | The default value when size is set, rounded to an integer (ties to even: `HNC(1, 2.5)` holds 2, `HNC(1, 86382.99)` holds 86383). Default is 0. Values assigned afterwards with `h[i] = v` keep their decimals. |
 
 **Returns:** `HaasNumberCollection`
 
@@ -2316,20 +2345,20 @@ Returns the converted value or nil if parsing fails.
 ParseCsv(csv, [hasHeaders], [columnDelimiter], [rowDelimiter])
 ```
 
-Parses CSV data string and returns it as an object. URLs are also supported.
+Parses CSV data string and returns it as an object. URLs are also supported, except on TradeServer Cloud: there a URL or path logs "The command `ParseCsv` with a url or path is not supported in the cloud version.", the command returns nil and the backtest is marked failed.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `csv` | `string` | Yes | The CSV data string or URL to download CSV data from. |
-| `hasHeaders` | `boolean` | No | Whether or not data contains headers (default: false) |
+| `csv` | `string` | Yes | The CSV data string or URL to download CSV data from (URLs not on TradeServer Cloud). |
+| `hasHeaders` | `boolean` | No | Whether or not data contains headers (default: false). When true, the header row is skipped and each row is keyed by the header names (`rows[1]["h1"]`). |
 | `columnDelimiter` | `string` | No | Delimiter for columns (default: ';') |
 | `rowDelimiter` | `string` | No | Delimiter for rows (default: '\n') |
 
 **Returns:** `dynamic`
 
-Object containing the parsed information.
+A 1-based list of rows; each row is a 1-based list of cells, or keyed by header name when hasHeaders is true. All values are strings.
 
 ---
 
@@ -2339,17 +2368,19 @@ Object containing the parsed information.
 ParseJson(json)
 ```
 
-Parses JSON data string and returns it as an object. URLs are also supported.
+Parses JSON data string and returns it as an object. URLs are also supported, except on TradeServer Cloud: there a URL or path logs "The command `ParseJson` with a url or path is not supported in the cloud version.", the command returns nil and the backtest is marked failed. Any input that is not JSON-shaped, an empty string included, is treated as a URL or path. JSON-shaped but malformed input (for example `'{"a":1,'`) stops the script with a parse error (for example "Unexpected end of content while loading JObject.") that `pcall` does not catch, and a backtest fails; there is no way to validate the input inside the script. Parse only trusted input.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `json` | `string` | Yes | The JSON data string or URL to download JSON data from. |
+| `json` | `string` | Yes | The JSON data string or URL to download JSON data from (URLs not on TradeServer Cloud). |
 
 **Returns:** `dynamic`
 
-Object containing the parsed information.
+A table mirroring the JSON: objects become keyed tables and arrays 1-based lists. Numbers, strings and booleans keep their JSON types. `#` gives the length of an array and 0 for an object.
+
+String fields stay strings. They coerce in arithmetic (`"83000.5" + 1` is 83001.5) but not in comparisons. A string never equals a signal constant, not even its own name (`SignalBuy == "SignalBuy"` is false, and `"" .. SignalBuy` is "SignalLong"), so map signal names from JSON to constants explicitly, for example `if parsed.prediction == "SignalBuy" then signal = SignalLong end`.
 
 ---
 
@@ -2392,9 +2423,9 @@ Splits a string into substrings that are based on the characters in an array.
 | `value` | `string` | Yes | The main string. |
 | `delimiter` | `string` | Yes | The delimiter value. |
 
-**Returns:** `unknown`
+**Returns:** `dynamic`
 
-Returns an array of strings.
+Returns a list (Lua table) of strings: `StringExplode("a,b,c", ",")` gives `a`, `b`, `c`.
 
 ---
 
@@ -2412,9 +2443,9 @@ Split a string on '&' and '='.
 |------|------|----------|-------------|
 | `value` | `string` | Yes | The main string. |
 
-**Returns:** `unknown`
+**Returns:** `dynamic`
 
-Returns an key-value based table.
+Returns a key-value table (a Lua table read by key, for example `result.name`); all values are strings (`StringFromQuery("a=1&b=2").a` is `"1"`, so `== 1` is false). `#result` is 0.
 
 ---
 

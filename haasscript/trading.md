@@ -81,7 +81,7 @@ Compares the average enter price to the targetPrice or current price.
 
 **Returns:** `boolean`
 
-Returns true if the trade is allowed.
+Returns true if the trade is allowed. Returns true while no position is open and for an unknown positionId. A negative acceptedLoss requires that much profit before the exit is allowed. A given targetPrice replaces the current price in the comparison. The call does not block orders by itself: use the result, for example as an insurance in InsuranceContainer() or TradeBotContainer().
 
 ---
 
@@ -102,7 +102,7 @@ Only allows a order to occur once per bar. Signals produced during a ordered bar
 
 **Returns:** `boolean`
 
-Returns true when new bar opens or no orders occurred during a bar.
+Returns true when new bar opens or no orders occurred during a bar. An order counts from the update it is placed, so the command returns false on that update.
 
 ---
 
@@ -182,12 +182,12 @@ Blocks any signal until a certain number of minutes have passed since the last e
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `minutes` | `number` | Yes | Number of minutes to wait after the last order. |
+| `minutes` | `number` | Yes | Number of minutes to wait after the last exit made by a safety. |
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
 
 **Returns:** `boolean`
 
-Returns true when the last trade is a certain number of minutes ago.
+Returns false for `minutes` minutes after an exit made by a safety (for example a TradeBotContainer safety exit), counted from the exit fill, not from when the safety triggers; true otherwise. For example on 1-minute bars with 10, it is false from the update the exit fills through the tenth minute after it, and true from the eleventh. Exits placed by the script itself, for example DoExitPosition() after StopLoss(), do not count.
 
 ---
 
@@ -275,7 +275,7 @@ Blocks any signal until a certain number of minutes have passed since the last p
 
 **Returns:** `boolean`
 
-Returns true when the last placed order is a certain number of minutes ago.
+Returns true when the last placed order is a certain number of minutes ago. For example on 1-minute bars with timeout 2, it is false on the update the order is placed and the two following minutes, and true from the third.
 
 ---
 
@@ -563,17 +563,21 @@ StopLoss(percentage, [positionId], [direction])
 
 Calculates the current percentage change from the average enter price and compares it with the stop loss value.
 
+The percentage is the price change and is not multiplied by the leverage. For a return-on-margin threshold, divide by the leverage or use StopLossROI() / TakeProfitROI().
+
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `percentage` | `number` | Yes | Stop loss percentage. |
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
-| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. |
+| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. Only a position on this side is evaluated; returns false when the open position is on the other side. |
 
 **Returns:** `boolean`
 
 Returns true if the stop loss has been hit.
+
+Returns a boolean only; no order is placed, also in managed scripts. Act on it, for example `if StopLoss(x) then DoExitPosition() end`, or pass it to SafetyContainer(). It is re-evaluated on every call and does not latch. With no position it returns false. With a positionId it evaluates that position in its own direction (for a short, the stop loss is hit when the price rises).
 
 ---
 
@@ -583,7 +587,7 @@ Returns true if the stop loss has been hit.
 StopLossROI(percentage, [positionId], [direction])
 ```
 
-Calculates the defined position's current ROI percentage and gives a signal if the set loss is reached.
+Compares the position's `GetPositionROI` (profit on margin, about the price move × leverage; fees excluded while the position is open) with the percentage and gives a signal if the set loss is reached. While a position is open, `StopLossROI(x)` equals `StopLoss(x ÷ leverage)`.
 
 **Parameters:**
 
@@ -591,11 +595,13 @@ Calculates the defined position's current ROI percentage and gives a signal if t
 |------|------|----------|-------------|
 | `percentage` | `number` | Yes | Stop loss ROI percentage. |
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
-| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. |
+| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. Only a position on this side is evaluated; returns false when the open position is on the other side. |
 
 **Returns:** `boolean`
 
 Returns true if the stop loss has been hit.
+
+> **Warning:** A closed position keeps its final ROI, so `StopLossROI` can keep returning true after the position is closed. Check `GetPositionAmount(positionId) > 0` before acting on it.
 
 ---
 
@@ -607,17 +613,21 @@ TakeProfit(percentage, [positionId], [direction])
 
 Calculates the current percentage change from the average enter price and compares it with the take profit value.
 
+The percentage is the price change and is not multiplied by the leverage. For a return-on-margin threshold, divide by the leverage or use StopLossROI() / TakeProfitROI().
+
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `percentage` | `number` | Yes | Take profit percentage. |
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
-| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. |
+| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. Only a position on this side is evaluated; returns false when the open position is on the other side. |
 
 **Returns:** `boolean`
 
 Returns true if the take profit has been reached.
+
+Returns a boolean only; no order is placed, also in managed scripts. Act on it, for example `if TakeProfit(x) then DoExitPosition() end`, or pass it to SafetyContainer(). It is re-evaluated on every call and does not latch. With no position it returns false. With a positionId it evaluates that position in its own direction (for a short, the take profit is reached when the price falls).
 
 ---
 
@@ -627,7 +637,7 @@ Returns true if the take profit has been reached.
 TakeProfitROI(percentage, [positionId], [direction])
 ```
 
-Calculates the defined position's current ROI percentage and gives a signal if the set profit is reached.
+Compares the position's `GetPositionROI` (profit on margin, about the price move × leverage; fees excluded while the position is open) with the percentage and gives a signal if the set profit is reached. While a position is open, `TakeProfitROI(x)` equals `TakeProfit(x ÷ leverage)`.
 
 **Parameters:**
 
@@ -635,7 +645,7 @@ Calculates the defined position's current ROI percentage and gives a signal if t
 |------|------|----------|-------------|
 | `percentage` | `number` | Yes | Take profit ROI percentage. |
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
-| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. |
+| `direction` | `enum` | No | The direction of the position. PositionLong or PositionShort. By default both. Only a position on this side is evaluated; returns false when the open position is on the other side. |
 
 **Returns:** `boolean`
 
@@ -686,6 +696,8 @@ Keeps track of the highest/lowest recorded price and adjust the stop loss accord
 
 Returns true if the stop loss has been hit.
 
+Returns a boolean only; no order is placed, also in managed scripts. Act on it, for example `if TrailingStopLoss(x) then DoExitPosition() end`, or pass it to SafetyContainer(). It is re-evaluated on every call and does not latch. With no position it returns false. With a positionId it evaluates that position in its own direction (for a short, the stop loss is hit when the price rises).
+
 ---
 
 
@@ -715,7 +727,7 @@ Cancels all open orders.
 CancelOrder(orderId)
 ```
 
-Sends out a cancel order for the given order identifier.
+Sends out a cancel order for the given order identifier. The cancellation takes effect on the next update: the order is still open for the rest of the current tick, the log shows "Cancelling order <id>" on this tick and "Order has been cancelled by script." on the next. An order cancelled without any fill does not appear in GetAllFilledOrders().
 
 **Parameters:**
 
@@ -773,7 +785,7 @@ Returns true if there are any open orders.
 IsBuyOrder(orderId)
 ```
 
-Checks if the given order is a buy order.
+Checks if the given order is a buy order. Only reliable while the order is open: it returns false once the order is filled or cancelled. Use `OrderContainer(orderId).isBuyOrder` for a filled order.
 
 **Parameters:**
 
@@ -833,7 +845,7 @@ Returns true if the given order is still open.
 IsSellOrder(orderId)
 ```
 
-Checks if the given order is a sell order.
+Checks if the given order is a sell order. Only reliable while the order is open: it returns false once the order is filled. Use `OrderContainer(orderId).isSellOrder` for a filled order.
 
 **Parameters:**
 
@@ -866,7 +878,7 @@ A collection of (partially) filled orders executed by the bot. Maximum size is 5
 
 **Returns:** `dynamic`
 
-Returns a list of OrderContainer() objects. Sorted descending on close timestamp.
+Returns a Lua table (1-based list) of OrderContainer() objects, sorted descending on close timestamp. An empty table when there are none.
 
 ---
 
@@ -886,7 +898,9 @@ A collection of open orders executed by the bot.
 
 **Returns:** `dynamic`
 
-Returns a list of OrderContainer() objects.
+Returns a Lua table (1-based list) of OrderContainer() objects. An empty table when there are none.
+
+Orders placed in the current update may not be listed yet: on a live bot they appear once the exchange confirms them, in a backtest on the next update. Keep the returned order identifiers to count them.
 
 ---
 
@@ -926,7 +940,7 @@ Calculates the cancelled amount if the order is completed/cancelled.
 
 **Returns:** `number`
 
-Returns the cancelled amount if the order is completed/cancelled.
+Returns the cancelled amount if the order is completed/cancelled. On an order that is still open it logs "WARNING: GetOrderCancelledAmount(): Order is still active." and returns 0.
 
 ---
 
@@ -957,7 +971,7 @@ Returns the amount filled for a specific order.
 GetOrderOpenTime(orderId, [inSeconds])
 ```
 
-Calculates how long an order is or has been open in minutes.
+Calculates how long an order has been open, in minutes, while it is open. Returns 0 once the order is filled or cancelled.
 
 **Parameters:**
 
@@ -968,7 +982,7 @@ Calculates how long an order is or has been open in minutes.
 
 **Returns:** `number`
 
-Returns the time the order is or has been open for in minutes.
+Returns the time the order has been open for in minutes (in seconds with inSeconds), or 0 once it is filled or cancelled.
 
 ---
 
@@ -1015,20 +1029,20 @@ Returns an array with order information.
 | Index | Name | Type | Description |
 |-------|------|------|-------------|
 | 1 | `price` | `number` | The price on which the order is filled or executed. |
-| 2 | `executedAmount` | `number` | The executed amount. |
+| 2 | `executedAmount` | `number` | The order amount (as placed, whether or not it filled). See filledAmount for the filled part. |
 | 3 | `filledAmount` | `number` | The filled amount. |
 | 4 | `isOpen` | `boolean` | If true, the order is open. |
 | 5 | `isFilled` | `boolean` | If true, the order is filled 100%. |
 | 6 | `isCancelled` | `boolean` | If true, the order is cancelled but might be filled partially. |
 | 7 | `feeCosts` | `number` | The total fee costs. |
-| 8 | `feeCurrency` | `number` | The currency of the fee costs. |
-| 9 | `openTime` | `number` | The time the order is or has been open for in minutes. |
+| 8 | `feeCurrency` | `string` | The currency of the fee costs. Empty until the order fills. On a spot sell it names the base coin, although the fee is charged in the quote coin. |
+| 9 | `openTime` | `number` | While the order is open: how long it has been open, in seconds. After a fill: 0. After a cancel: a Unix timestamp. |
 | 10 | `positionId` | `string` | The position identifier related to the order. |
 | 11 | `orderId` | `string` | The unique order identifier. |
-| 12 | `isEnterOrder` | `boolean` | If true, the order is an enter order. |
+| 12 | `isEnterOrder` | `boolean` | If true, the order is an enter order. On spot, a sell placed with no open position counts as an enter order. Reads false after the order is cancelled. |
 | 13 | `isExitOrder` | `boolean` | If true, the order is an exit order. |
 | 14 | `triggerPrice` | `number` | The trigger-price of a conditional order. |
-| 15 | `isBuyOrder` | `boolean` | If true, the order is a buy order. |
+| 15 | `isBuyOrder` | `boolean` | If true, the order is a buy order. Reads false after the order is cancelled. |
 | 16 | `isSellOrder` | `boolean` | If true, the order is a sell order. |
 
 ---
@@ -1083,6 +1097,8 @@ CreatePosition(direction, price, amount, [market], [leverage], [positionId])
 
 Creates a bot position by processing a simulated order using the defined specifications. By doing this, profit/loss and position details can be used by the script. Use the returned position ID with PositionContainer() to extract position data.
 
+The simulated orders of `CreatePosition`, `AdjustVPosition` and `CloseVPosition` are logged as "(Simulated Order)" fills and are included in the backtest report statistics (closed and losing positions, executed and completed orders, average margin). They do not count as trading commands for the "No trading command detected" compile check.
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -1096,7 +1112,7 @@ Creates a bot position by processing a simulated order using the defined specifi
 
 **Returns:** `string`
 
-Returns the position ID.
+Returns the position ID (the given `positionId` when one is passed).
 
 ---
 
@@ -1110,7 +1126,7 @@ Gets all open positions and returns them as PositionContainers.
 
 **Returns:** `dynamic`
 
-Returns an array of PositionContainers.
+Returns a Lua table (1-based list) of PositionContainers. An empty table when there are none.
 
 ---
 
@@ -1126,7 +1142,7 @@ Gets the total amount open in a specific position.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
+| `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once: if omitted while several positions are open, the command logs "Requires positionId when multiple positions are open.", still returns a value, and the backtest fails at the end of the current tick. |
 
 **Returns:** `number`
 
@@ -1208,11 +1224,13 @@ Gets the total realized plus unrealized profit of a specific position.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
-| `targetPrice` | `number` | No | Optional target price. Default is the best bid/ask. |
+| `targetPrice` | `number` | No | Optional target price. Default is the exit-side best quote: the bid for a long, the ask for a short. |
 
 **Returns:** `number`
 
-Returns the total realized plus unrealized profit of a specific position. On spot/margin the result will be in the quote currency. For leverage its in the underlying currency.
+Returns the total realized plus unrealized profit of a specific position. On spot, margin and linear (quote-margined) contracts the result is in the quote currency; on inverse contracts it is in the settlement (base) coin.
+
+For an open long on spot: (current price − average enter price) × amount, minus the entry fee; the coming exit fee is not deducted. With `targetPrice`, an estimated exit fee at that price is also deducted (targetPrice × amount × fee rate), so passing a target changes the formula, not just the price. After the position closes, `GetPositionProfit(positionId)` returns the realized profit (both fees deducted); the form without a positionId returns 0.
 
 ---
 
@@ -1222,18 +1240,22 @@ Returns the total realized plus unrealized profit of a specific position. On spo
 GetPositionROI([positionId], [targetPrice])
 ```
 
-Calculates the ROI based on used margin and unrealized + realized profits.
+Calculates the ROI based on used margin and unrealized + realized profits. While the position is open the ROI uses the gross price move (fees not included), so it is about the price move × leverage and can be positive while GetPositionProfit() is negative; after the close it uses realized profit net of fees. Pass the positionId after the close (the no-argument form then returns 0).
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `positionId` | `string` | No | Optional unique identifier. Required when the bot is trading multiple position at once. |
-| `targetPrice` | `number` | No | Optional target price. Default is the best bid/ask. |
+| `targetPrice` | `number` | No | Optional target price. Default is the exit-side best quote: the bid for a long, the ask for a short. |
 
 **Returns:** `number`
 
-Returns the ROI as a percentage.
+Returns the ROI as a percentage. On leverage markets this is the return on margin: the price change in percent multiplied by the set leverage, fees excluded.
+
+After the position closes, `GetPositionROI(positionId)` returns the position's final realized ROI (net of fees) until a new position opens in that slot.
+
+The ROI is derived from the position profit rounded to 8 decimals, so on small positions (notably inverse contracts, where profit is in BTC) it changes in steps of 0.00000001 ÷ margin, and `StopLossROI` / `TakeProfitROI` thresholds are quantised accordingly.
 
 ---
 
@@ -1253,7 +1275,7 @@ Checks whether or not a position is closed.
 
 **Returns:** `boolean`
 
-Returns true if position is closed, otherwise false.
+Returns true if position is closed, otherwise false. Returns false when no position has existed yet; it becomes true only after a position has closed.
 
 ---
 
@@ -1296,12 +1318,14 @@ Gets all the information from the open bot position.
 
 Returns an array with position information.
 
+A closed position can still be read with its positionId. Without an argument and with no position, an empty default is returned ("", zeros, NoPosition).
+
 **Container fields** (accessible by name or 1-based index):
 
 | Index | Name | Type | Description |
 |-------|------|------|-------------|
 | 1 | `positionId` | `string` | The position identifier. |
-| 2 | `market` | `string` | The market of the position. |
+| 2 | `market` | `string` | The position key: account id, market and a suffix joined by `_` (for example `<accountId>_BINANCE_BTC_USDT__0`), not a plain market name. |
 | 3 | `isLong` | `boolean` | Set on true when the direction is long. |
 | 4 | `isShort` | `boolean` | Set on true when the direction is short. |
 | 5 | `enterPrice` | `number` | The average enter price. |
@@ -1311,6 +1335,7 @@ Returns an array with position information.
 | 9 | `openTime` | `number` | Timestamp (in unix) when the position was opened. |
 | 10 | `updatedTime` | `number` | Timestamp (in unix) when the position was last updated. |
 | 11 | `closeTime` | `number` | Timestamp (in unix) when the position was closed. If position is still open, value will be 0 |
+| 12 | `direction` | `enum` | The position direction: PositionLong, PositionShort or NoPosition. Keeps the last direction after the position is closed. |
 
 ---
 
@@ -1450,7 +1475,7 @@ Gets the profit of the last long exit or sell trade.
 
 **Returns:** `number`
 
-Returns the profit.
+Returns the gross profit of the last exit (fees not deducted), equal to GetOrderProfit() of the exit order. For an unmanaged position, pass the positionId: without it the command returns 0 once the position is closed.
 
 ---
 
@@ -1510,7 +1535,7 @@ Converts 4 boolean values to a signal.
 
 **Returns:** `enum`
 
-The signal as a result of the boolean values.
+The signal as a result of the boolean values. When isLong is true, SignalLong is returned regardless of the other arguments. Without arguments, SignalNone is returned.
 
 ---
 
@@ -1555,7 +1580,7 @@ Saves and delays a signal by a number of minutes.
 
 **Returns:** `enum`
 
-Returns the saved signal from a number of minutes back or SignalNone when it doesn't have a delayed signal yet.
+Returns the signal that was passed in exactly `minutes` updates earlier, for one update only, or SignalNone otherwise. Call it on every update; each call site keeps its own history, so two calls with the same input do not share it.
 
 ---
 
@@ -1598,7 +1623,7 @@ Determines the signal from a result with a buy and sell level.
 
 **Returns:** `enum`
 
-Returns SignalLong when the result is below the buy level, SignalShort when the result is above the sell level and SignalNone when the result between the buy and sell level.
+Returns SignalLong when the result is below the buy level, SignalShort when the result is above the sell level and SignalNone otherwise, including when the result equals either level.
 
 ---
 
@@ -1608,13 +1633,13 @@ Returns SignalLong when the result is below the buy level, SignalShort when the 
 GetConsensusSignal(signals[])
 ```
 
-Counts the number of signals. When the majority agrees it will return the signal.
+Counts the number of signals. When more than half of all inputs agree, it returns that signal; SignalNone inputs count in the total, so (SignalLong, SignalNone) returns SignalNone while (SignalLong, SignalLong, SignalNone) returns SignalLong. A tie returns SignalNone.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `signals[]` | `EnumParams` | Yes | Indicator signals collection. Takes a variable number of arguments. |
+| `signals[]` | `EnumParams` | Yes | Indicator signals, passed as separate arguments (a variable number of them). A collection (Lua table, HNC or series) is not accepted and aborts the script. |
 
 **Returns:** `enum`
 
@@ -1649,7 +1674,9 @@ Returns SignalLong when the a crossover occurs, SignalShort when a crossunder oc
 GetRemoteSignal(id)
 ```
 
-Gets the remote signal which is published by SaveRemoteSignal() or the STORE_SIGNAL webhook. An incoming webhook signal triggers an immediate script execution, bypassing the normal tick interval.
+Gets the remote signal which is published by SaveRemoteSignal() or the STORE_SIGNAL webhook. An incoming webhook signal triggers an immediate script execution, bypassing the normal tick interval. In the triggered update `Time()` still returns the start of the current minute, not the arrival time.
+
+A script cannot contain both GetRemoteSignal() and SaveRemoteSignal(), even if neither is called; it is refused before compiling with "Using both GetRemoteSignal() and SaveRemoteSignal() in the same script isn't allowed."
 
 **Parameters:**
 
@@ -1659,7 +1686,25 @@ Gets the remote signal which is published by SaveRemoteSignal() or the STORE_SIG
 
 **Returns:** `enum`
 
-Returns a trade signal enumeration. For example SignalLong(), SignalShort(), SignalExitPosition(), SignalNone() or SignalError().
+Returns a trade signal enumeration. For example SignalLong(), SignalShort(), SignalExitPosition(), SignalNone() or SignalError(). Returns SignalNone when no signal is stored for the id; no error is raised.
+
+Each stored value is returned once; the next read returns SignalNone. The same value sent again within about a minute is not delivered again, although it still triggers an update.
+
+In a backtest, returns the stored signal history: each bar returns the last signal received during its minute (earlier signals in that minute are not seen, and repeats suppressed live still appear); minutes without a signal return SignalNone.
+
+The `STORE_SIGNAL` webhook stores a signal for this command:
+
+`https://cloud.haasapi.com/SignalAPI.php?channel=STORE_SIGNAL&id=<id>&secret=<secret>&signal=<code>`
+
+| Code | Signal |
+|------|--------|
+| 1 | `SignalLong` |
+| 2 | `SignalShort` |
+| 3 | `SignalExitPosition` |
+| 4 | `SignalExitLong` |
+| 5 | `SignalExitShort` |
+| 6 | `SignalReservedA` (custom signal 1) |
+| 7 | `SignalReservedB` (custom signal 2) |
 
 ---
 
@@ -1716,13 +1761,13 @@ Returns SignalLong when the result is below the threshold and SignalShort when t
 GetUnanimousSignal(signals[])
 ```
 
-Validates if all signals are the same.
+Validates if all signals are the same. Returns a direction only if every input is that direction; any SignalNone input yields SignalNone.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `signals[]` | `EnumParams` | Yes | Indicator signals collection. Takes a variable number of arguments. |
+| `signals[]` | `EnumParams` | Yes | Indicator signals, passed as separate arguments (a variable number of them). A Lua table of signals is not accepted and aborts the script. |
 
 **Returns:** `enum`
 
@@ -1736,7 +1781,7 @@ Returns SignalLong, SignalShort or SignalNone when there is unanimous decision a
 GetWebHookSignal(id)
 ```
 
-Gets the latest incoming webhook signal by ID. Triggers immediate script execution when a webhook arrives, bypassing the normal minute tick interval — use this for high-performance signal-based trading.
+Gets the latest incoming webhook signal by ID. Triggers immediate script execution when a webhook arrives, bypassing the normal minute tick interval — use this for high-performance signal-based trading. In the triggered update `Time()` still returns the start of the current minute, not the arrival time. Use the payload's `webhook_received_at` for the arrival time.
 
 **Parameters:**
 
@@ -1746,7 +1791,11 @@ Gets the latest incoming webhook signal by ID. Triggers immediate script executi
 
 **Returns:** `dynamic`
 
-Returns the latest signal payload stored by the incoming webhook, or nil if no signal has been received. The returned object always contains `webhook_received_at` (a Unix timestamp set by the server when the signal was received). All other fields are whatever was included in the incoming webhook payload.
+Returns the latest signal payload stored by the incoming webhook, or nil if no signal has been received. The returned object always contains `webhook_received_at` (a Unix timestamp set by the server when the signal was received). All other fields are whatever was included in the incoming webhook payload, as strings; convert numbers with tonumber() before arithmetic or comparison.
+
+The payload is a plain Lua table holding only the sender's fields plus `webhook_received_at`; the `ttl` parameter is not included. The first read removes the payload: a second call, even in the same update, returns nil, so keep the result in a variable.
+
+Returns nil in backtests; webhook payloads are not replayed.
 
 **Example payload:**
 
@@ -1754,12 +1803,12 @@ Returns the latest signal payload stored by the incoming webhook, or nil if no s
 {
   webhook_received_at = 1711800000,  -- always present (Unix timestamp)
   action = "buy",                    -- user-defined
-  price = 42000,                     -- user-defined
+  price = "42000",                   -- user-defined; values arrive as strings
   symbol = "BTCUSDT"                 -- user-defined
 }
 ```
 
-> **Warning:** Once a signal has been processed, it will be removed from the system. It is recommended to use a different signal ID for each bot to avoid conflicts.
+> **Warning:** Once a signal has been read, it is removed from the system. An unread payload expires after the number of seconds given by the webhook's `ttl` parameter; after that the call returns nil. It is recommended to use a different signal ID for each bot to avoid conflicts.
 
 ---
 
@@ -1769,7 +1818,7 @@ Returns the latest signal payload stored by the incoming webhook, or nil if no s
 GetWeightedConsensusSignal(longWeight, shortWeight, exitWeight, signals[])
 ```
 
-Calculates and determines the weighted consensus signal.
+Calculates and determines the weighted consensus signal. Each signal adds its weight (1 by default, or the weight set with `SignalProperties`) to its direction; `SignalNone` inputs are ignored. A direction is returned only if it alone reaches its required weight. If more than one direction reaches its weight, or none does, the result is SignalNone. For example `GetWeightedConsensusSignal(2, 2, 2, SignalLong, SignalLong, SignalShort, SignalShort)` returns SignalNone, while `GetWeightedConsensusSignal(3, 2, 2, ...)` with the same signals returns SignalShort.
 
 **Parameters:**
 
@@ -1778,7 +1827,7 @@ Calculates and determines the weighted consensus signal.
 | `longWeight` | `number` | Yes | The required sum of the long signals weight before the signal is valid. |
 | `shortWeight` | `number` | Yes | The required sum of the short signals weight before the signal is valid. |
 | `exitWeight` | `number` | Yes | The required sum of the exit signals weight before the signal is valid. |
-| `signals[]` | `EnumParams` | Yes | Indicator signals collection. Takes a variable number of arguments. |
+| `signals[]` | `EnumParams` | Yes | Indicator signals, passed as separate arguments (a variable number of them). A Lua table of signals is not accepted and aborts the script. |
 
 **Returns:** `enum`
 
@@ -1883,6 +1932,8 @@ SaveRemoteSignal(id, secret, signal)
 
 This command can save and distribute a trading signal over the HaasCloud. This can be used in combination with trade signal enumeration. For example SignalLong(), SignalShort(), SignalExitPosition() or SignalNone().
 
+A script cannot contain both GetRemoteSignal() and SaveRemoteSignal(), even if neither is called; it is refused before compiling with "Using both GetRemoteSignal() and SaveRemoteSignal() in the same script isn't allowed."
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -1892,6 +1943,8 @@ This command can save and distribute a trading signal over the HaasCloud. This c
 | `signal` | `enum` | Yes | The signal enum to save. |
 
 **Returns:** `void`
+
+> **Warning:** This command also runs in backtests, and a signal saved there is published to the live signal store, where it reaches live bots reading that signal id. Backtest a signal producer against a separate signal id.
 
 ---
 
@@ -1936,12 +1989,14 @@ Sets properties such as weight or ignore in the signal input.
 | `useLong` | `boolean` | No | When true, this signal is used for long decisions. |
 | `useShort` | `boolean` | No | When true, this signal is used for short decisions. |
 | `useExit` | `boolean` | No | When true, this signal is used for exit decisions. |
-| `weight` | `number` | No | The weight of the signal. Minimum weight of 1 required. |
-| `delay` | `number` | No | Number of minutes the signal will be delayed. |
+| `weight` | `number` | No | The weight of the signal. Minimum weight of 1 required. Used by GetWeightedConsensusSignal; GetConsensusSignal and GetUnanimousSignal ignore it. |
+| `delay` | `number` | No | Number of minutes the signal will be delayed. The returned signal is the one from that many minutes earlier; until enough history exists it returns SignalNone. The delay counts minutes, not chart bars (delay 10 on a 5-minute chart is 10 minutes), and each call site keeps its own history. |
 
 **Returns:** `enum`
 
 Returns the signal with the new specifications.
+
+A signal with `useLong`, `useShort` or `useExit` set to false is left out of that direction's check in `GetUnanimousSignal`. The returned value prints as the signal's name and compares equal to the plain constant (`SignalProperties(SignalShort) == SignalShort` is true).
 
 ---
 
@@ -2064,6 +2119,8 @@ DoFlipPosition([note])
 
 Executes a DoLong() when the current position is short and an DoShort() the position is long.
 
+Places the exit and the opposite entry as two orders on the same update. On leverage markets the engine log labels them ExitLong / ExitShort and GoLong / GoShort (Sell / Buy on spot).
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -2080,16 +2137,18 @@ Executes a DoLong() when the current position is short and an DoShort() the posi
 DoLong([note], [count])
 ```
 
-**Aliases:** `DoBuy`
+**Aliases:** `DoBuy` (behaves identically; its log messages name `DoBuy()`, for example `DoBuy(): Blocking buy. Bot is already in a bought position.`)
 
 Generates a buy signal on spot or a long signal on margin & leverage.
+
+On margin and leverage while short, it closes the short and opens a long: two orders (ExitShort and GoLong) on the same update. The position reads the new side once both have filled. This also applies in hedge position mode; managed commands keep a single position (use unmanaged orders with separate position ids for a long and a short side by side).
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
-| `count` | `number` | No |  |
+| `count` | `number` | No | On spot it does not multiply the trade amount and does not allow extra entries while a position is open. |
 
 **Returns:** `void`
 
@@ -2101,9 +2160,11 @@ Generates a buy signal on spot or a long signal on margin & leverage.
 DoShort([note], [count])
 ```
 
-**Aliases:** `DoSell`
+**Aliases:** `DoSell` (behaves identically; its log messages name `DoSell()`, for example `DoSell(): Blocking sell. Bot has not bought yet.`)
 
 Generates a sell signal on spot or a short signal on margin & leverage.
+
+On margin and leverage while long, it closes the long and opens a short: two orders (ExitLong and GoShort) on the same update. The position reads the new side once both have filled. This also applies in hedge position mode; managed commands keep a single position (use unmanaged orders with separate position ids for a long and a short side by side).
 
 **Parameters:**
 
@@ -2122,7 +2183,7 @@ Generates a sell signal on spot or a short signal on margin & leverage.
 DoSignal(signal, [note])
 ```
 
-Processes a signal enum. Triggers a DoLong() when the signal equals SignalLong, a DoShort() when the signal equals SignalShort, a DoExitPosition() when the signal equals SignalExitPosition and does nothing when the signal is SignalNone.
+Processes a signal enum. Triggers a DoLong() when the signal equals SignalLong, a DoShort() when the signal equals SignalShort, a DoExitPosition() when the signal equals SignalExitPosition, SignalExitLong or SignalExitShort, and does nothing when the signal is SignalNone. SignalExitLong and SignalExitShort are not side-specific: either one closes the open position whatever its side. SignalError, SignalReservedA and SignalReservedB are ignored like SignalNone: no order, no log line, and an open position is kept.
 
 **Parameters:**
 
@@ -2144,7 +2205,9 @@ Processes a signal enum. Triggers a DoLong() when the signal equals SignalLong, 
 PlaceBuyOrder(price, amount, [market], [type], [note], [positionId], [timeout], [triggerPrice], [reduceOnly], [hiddenOrder])
 ```
 
-Places a (limit) buy order for the given amount and price. Returns the order identifier (text).
+Places a buy order for the given amount and price. Returns the order identifier (text). Orders below the exchange minimum are blocked with a warning and nothing is placed. The minimum is a notional evaluated at the order's own price, so a limit far below the market needs a larger amount (see MinimumTradeAmount(market, price)). In backtests the quote wallet is debited at the order's price even when the order fills lower.
+
+In backtests, orders larger than the available balance are not rejected; live bots reject them (the call logs "Insufficient funds" as an error and returns an empty string). Size orders from the wallet (for example `WalletAmount`) and check the returned identifier.
 
 **Parameters:**
 
@@ -2153,17 +2216,19 @@ Places a (limit) buy order for the given amount and price. Returns the order ide
 | `price` | `number` | Yes | The price on which to execute the order. If the order is a market order, this field will be ignored. |
 | `amount` | `number` | Yes | The amount to execute. |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
-| `type` | `enum` | No | The type of order. Default is limit. |
+| `type` | `enum` | No | The type of order. Default is the bot's Order type setting (see GetOrderType()); pass it explicitly when the order must fill now. |
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
 | `positionId` | `string` | No | Optional unique internal identifier that can be used to maintain multiple separate positions. |
-| `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes. Using a negative value will disable the timeout. |
+| `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes; 0 also uses the default. Using a negative value will disable the timeout. The timeout is enforced on the first update after it elapses. |
 | `triggerPrice` | `number` | No | Trigger price, used for conditional orders. This parameter must only be set when using native order types that are supported by the exchange. |
 | `reduceOnly` | `boolean` | No | Ensures that the executed order does not flip the opened position. |
 | `hiddenOrder` | `boolean` | No | The hidden order option ensures an order does not appear in the order book. |
 
 **Returns:** `string`
 
-Unique order identifier.
+Unique order identifier, or an empty string when the order is blocked before placement (for example over the tracked-order cap, or with insufficient funds on a live bot). A returned identifier means the order was submitted, not that it was accepted: a rejection (for example "Order has failed to execute. Reason: Order would immediately execute" for a maker-or-cancel order priced through the market) arrives as a warning later in the update. Confirm with IsOrderOpen() / IsOrderFilled().
+
+On a live bot with a market order type, the "Executing ... @ <price>" log line shows the price argument, not the fill price. Read the fill price from the order or the "order finished" log line.
 
 ---
 
@@ -2194,7 +2259,9 @@ Returns an new order identifier. Empty if no order is executed.
 PlaceExitLongOrder(price, amount, [market], [type], [note], [positionId], [timeout], [triggerPrice], [reduceOnly], [hiddenOrder])
 ```
 
-Places a (limit) exit long order for the given amount and price. Returns the order identifier (text).
+Places an exit long order for the given amount and price. Returns the order identifier (text).
+
+Margin and leverage markets only. On a spot market the order is refused with "Can not progress an margin/leverage order on a spot market.", the command returns an empty string, and the backtest fails at the end of that update; `pcall` does not catch it. Use `PlaceBuyOrder` / `PlaceSellOrder` on spot.
 
 **Parameters:**
 
@@ -2203,7 +2270,7 @@ Places a (limit) exit long order for the given amount and price. Returns the ord
 | `price` | `number` | Yes | The price on which to execute the order. If the order is a market order, this field will be ignored. |
 | `amount` | `number` | Yes | The amount to execute. |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
-| `type` | `enum` | No | The type of order. Default is limit. |
+| `type` | `enum` | No | The type of order. Default is the bot's Order type setting (see GetOrderType()); pass it explicitly when the order must fill now. |
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
 | `positionId` | `string` | No | Optional unique internal identifier that can be used to maintain multiple separate positions. |
 | `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes. Using a negative value will disable the timeout. |
@@ -2213,7 +2280,7 @@ Places a (limit) exit long order for the given amount and price. Returns the ord
 
 **Returns:** `string`
 
-Unique order identifier.
+Unique order identifier, or an empty string when the order is blocked before placement (for example over the tracked-order cap, or with insufficient funds on a live bot). A returned identifier means the order was submitted, not that it was accepted: a rejection (for example "Order has failed to execute. Reason: Order would immediately execute" for a maker-or-cancel order priced through the market) arrives as a warning later in the update. Confirm with IsOrderOpen() / IsOrderFilled().
 
 ---
 
@@ -2237,7 +2304,7 @@ Places exit orders for a specific bot position.
 
 **Returns:** `string`
 
-Returns an order identifier.
+Returns an order identifier. When the position has nothing to exit, returns an empty string without a warning or error.
 
 ---
 
@@ -2247,7 +2314,9 @@ Returns an order identifier.
 PlaceExitShortOrder(price, amount, [market], [type], [note], [positionId], [timeout], [triggerPrice], [reduceOnly], [hiddenOrder])
 ```
 
-Places a (limit) exit short order for the given amount and price. Returns the order identifier (text).
+Places an exit short order for the given amount and price. Returns the order identifier (text).
+
+Margin and leverage markets only. On a spot market the order is refused with "Can not progress an margin/leverage order on a spot market.", the command returns an empty string, and the backtest fails at the end of that update; `pcall` does not catch it. Use `PlaceBuyOrder` / `PlaceSellOrder` on spot.
 
 **Parameters:**
 
@@ -2256,7 +2325,7 @@ Places a (limit) exit short order for the given amount and price. Returns the or
 | `price` | `number` | Yes | The price on which to execute the order. If the order is a market order, this field will be ignored. |
 | `amount` | `number` | Yes | The amount to execute. |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
-| `type` | `enum` | No | The type of order. Default is limit. |
+| `type` | `enum` | No | The type of order. Default is the bot's Order type setting (see GetOrderType()); pass it explicitly when the order must fill now. |
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
 | `positionId` | `string` | No | Optional unique internal identifier that can be used to maintain multiple separate positions. |
 | `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes. Using a negative value will disable the timeout. |
@@ -2266,7 +2335,7 @@ Places a (limit) exit short order for the given amount and price. Returns the or
 
 **Returns:** `string`
 
-Unique order identifier.
+Unique order identifier, or an empty string when the order is blocked before placement (for example over the tracked-order cap, or with insufficient funds on a live bot). A returned identifier means the order was submitted, not that it was accepted: a rejection (for example "Order has failed to execute. Reason: Order would immediately execute" for a maker-or-cancel order priced through the market) arrives as a warning later in the update. Confirm with IsOrderOpen() / IsOrderFilled().
 
 ---
 
@@ -2276,7 +2345,9 @@ Unique order identifier.
 PlaceGoLongOrder(price, amount, [market], [type], [note], [positionId], [timeout], [triggerPrice], [reduceOnly], [hiddenOrder])
 ```
 
-Places a (limit) go long order for the given amount and price. Returns the order identifier (text).
+Places a go long order for the given amount and price. Returns the order identifier (text).
+
+Margin and leverage markets only. On a spot market the order is refused with "Can not progress an margin/leverage order on a spot market.", the command returns an empty string, and the backtest fails at the end of that update; `pcall` does not catch it. Use `PlaceBuyOrder` / `PlaceSellOrder` on spot.
 
 **Parameters:**
 
@@ -2285,7 +2356,7 @@ Places a (limit) go long order for the given amount and price. Returns the order
 | `price` | `number` | Yes | The price on which to execute the order. If the order is a market order, this field will be ignored. |
 | `amount` | `number` | Yes | The amount to execute. |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
-| `type` | `enum` | No | The type of order. Default is limit. |
+| `type` | `enum` | No | The type of order. Default is the bot's Order type setting (see GetOrderType()); pass it explicitly when the order must fill now. |
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
 | `positionId` | `string` | No | Optional unique internal identifier that can be used to maintain multiple separate positions. |
 | `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes. Using a negative value will disable the timeout. |
@@ -2295,7 +2366,7 @@ Places a (limit) go long order for the given amount and price. Returns the order
 
 **Returns:** `string`
 
-Unique order identifier.
+Unique order identifier, or an empty string when the order is blocked before placement (for example over the tracked-order cap, or with insufficient funds on a live bot). A returned identifier means the order was submitted, not that it was accepted: a rejection (for example "Order has failed to execute. Reason: Order would immediately execute" for a maker-or-cancel order priced through the market) arrives as a warning later in the update. Confirm with IsOrderOpen() / IsOrderFilled().
 
 ---
 
@@ -2305,7 +2376,9 @@ Unique order identifier.
 PlaceGoShortOrder(price, amount, [market], [type], [note], [positionId], [timeout], [triggerPrice], [reduceOnly], [hiddenOrder])
 ```
 
-Places a (limit) go short order for the given amount and price. Returns the order identifier (text).
+Places a go short order for the given amount and price. Returns the order identifier (text).
+
+Margin and leverage markets only. On a spot market the order is refused with "Can not progress an margin/leverage order on a spot market.", the command returns an empty string, and the backtest fails at the end of that update; `pcall` does not catch it. Use `PlaceBuyOrder` / `PlaceSellOrder` on spot.
 
 **Parameters:**
 
@@ -2314,7 +2387,7 @@ Places a (limit) go short order for the given amount and price. Returns the orde
 | `price` | `number` | Yes | The price on which to execute the order. If the order is a market order, this field will be ignored. |
 | `amount` | `number` | Yes | The amount to execute. |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
-| `type` | `enum` | No | The type of order. Default is limit. |
+| `type` | `enum` | No | The type of order. Default is the bot's Order type setting (see GetOrderType()); pass it explicitly when the order must fill now. |
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
 | `positionId` | `string` | No | Optional unique internal identifier that can be used to maintain multiple separate positions. |
 | `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes. Using a negative value will disable the timeout. |
@@ -2324,7 +2397,7 @@ Places a (limit) go short order for the given amount and price. Returns the orde
 
 **Returns:** `string`
 
-Unique order identifier.
+Unique order identifier, or an empty string when the order is blocked before placement (for example over the tracked-order cap, or with insufficient funds on a live bot). A returned identifier means the order was submitted, not that it was accepted: a rejection (for example "Order has failed to execute. Reason: Order would immediately execute" for a maker-or-cancel order priced through the market) arrives as a warning later in the update. Confirm with IsOrderOpen() / IsOrderFilled().
 
 ---
 
@@ -2334,7 +2407,11 @@ Unique order identifier.
 PlaceSellOrder(price, amount, [market], [type], [note], [positionId], [timeout], [triggerPrice], [reduceOnly], [hiddenOrder])
 ```
 
-Places a (limit) sell order for the given amount and price. Returns the order identifier (text).
+Places a sell order for the given amount and price. Returns the order identifier (text).
+
+In backtests on spot, a sell larger than the position is not clipped: the order is split into a closing part (the position amount) and an extra part, and the extra part is tracked as an open short position. A sell with no position at all is likewise tracked as an open short. To close a spot position, sell `GetPositionAmount()`; the bought amount is already reduced by a fee charged in the base currency.
+
+In backtests, orders larger than the available balance are not rejected; live bots reject them (the call logs "Insufficient funds" as an error and returns an empty string). Size orders from the wallet (for example `WalletAmount`) and check the returned identifier.
 
 **Parameters:**
 
@@ -2343,7 +2420,7 @@ Places a (limit) sell order for the given amount and price. Returns the order id
 | `price` | `number` | Yes | The price on which to execute the order. If the order is a market order, this field will be ignored. |
 | `amount` | `number` | Yes | The amount to execute. |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
-| `type` | `enum` | No | The type of order. Default is limit. |
+| `type` | `enum` | No | The type of order. Default is the bot's Order type setting (see GetOrderType()); pass it explicitly when the order must fill now. |
 | `note` | `string` | No | A note for the order. Visible in the open orders and history. |
 | `positionId` | `string` | No | Optional unique internal identifier that can be used to maintain multiple separate positions. |
 | `timeout` | `number` | No | The order timeout in seconds. By default the timeout is 600 seconds / 10 minutes. Using a negative value will disable the timeout. |
@@ -2353,7 +2430,9 @@ Places a (limit) sell order for the given amount and price. Returns the order id
 
 **Returns:** `string`
 
-Unique order identifier.
+Unique order identifier, or an empty string when the order is blocked before placement (for example over the tracked-order cap, or with insufficient funds on a live bot). A returned identifier means the order was submitted, not that it was accepted: a rejection (for example "Order has failed to execute. Reason: Order would immediately execute" for a maker-or-cancel order priced through the market) arrives as a warning later in the update. Confirm with IsOrderOpen() / IsOrderFilled().
+
+On a live bot with a market order type, the "Executing ... @ <price>" log line shows the price argument, not the fill price. Read the fill price from the order or the "order finished" log line.
 
 ---
 
@@ -2376,7 +2455,11 @@ Merges multiple signals into a single list and determines the unanimous and cons
 
 **Returns:** `dynamic`
 
-Returns a list with on index 1 the array with signals, on index 2 the unanimous and on index 3 the consensus signal.
+Returns a list with on index 1 the unanimous and on index 2 the consensus signal.
+
+Only `SignalLong`, `SignalShort` and `SignalExitPosition` are merged. `SignalExitLong`, `SignalExitShort`, `SignalReservedA`, `SignalReservedB` and `SignalError` count as `SignalNone` in both the unanimous and the consensus result, so passing them through the container never triggers a trade.
+
+Each call logs one line listing its inputs (for example `IndicatorContainer(): SignalLong: SignalLong | SignalShort: SignalShort`) unless `DisableIndicatorContainerLogs()` has been called.
 
 **Container fields** (accessible by name or 1-based index):
 
@@ -2403,7 +2486,7 @@ Validates if all the signals agree.
 
 **Returns:** `boolean`
 
-Returns true if all the signals in the collection are true.
+Returns true if all the signals in the collection are true. Pass the signals as separate booleans: a Lua table is not expanded (`InsuranceContainer({true, false})` returns true). With no arguments it returns true. This is not a trading command; a script also needs TradeBotContainer() or a Do* command.
 
 ---
 
@@ -2423,7 +2506,7 @@ Checks a collection for active safety signals.
 
 **Returns:** `boolean`
 
-Returns true if any of the signals is active.
+Returns true if any of the signals is active. Pass the signals as separate booleans: a Lua table is not expanded (`SafetyContainer({false, true})` returns false). With no arguments it returns false. This is not a trading command; a script also needs TradeBotContainer() or a Do* command.
 
 ---
 
@@ -2433,7 +2516,7 @@ Returns true if any of the signals is active.
 TradeBotContainer([safetySignal], [indicatorSignal], [insuranceSignal])
 ```
 
-Checks the safety, indicator & insurance signal. If a safety is active, DoExitPosition() will be executed. When there are no safeties active, the indicator signal will be executed if the insurances agree.
+Checks the safety, indicator & insurance signal. If a safety is active, DoExitPosition() will be executed. When there are no safeties active, the indicator signal will be executed if the insurances agree. The insurance also blocks indicator exit signals (SignalExitPosition): while it is false, only a safety can close the position. A safety exit logs "TradeBotContainer(): A safety has triggered." and its order log lines end with " (S)". A safety while flat calls DoExitPosition() anyway, which logs the harmless warning "Blocking sell. Bot has not bought yet." With no arguments the command does nothing.
 
 **Parameters:**
 
@@ -2479,7 +2562,7 @@ AmountLabel([market])
 
 **Aliases:** `AmountCurrency`
 
-Gets the amount label. For reflection, in case the market is Bitstamp BTC/USDit will return 'BTC'. When we are on BitMEX XBT/USD (XBTUSD), it will return 'contract(s)'.
+Gets the amount label. For reflection, in case the market is Bitstamp BTC/USDit will return 'BTC'. When we are on BitMEX XBT/USD (XBTUSD), it will return 'contract(s)'. On a Bybit inverse perpetual it returns 'Contract(s)', while `ProfitLabel()` returns the settlement coin ('BTC').
 
 **Parameters:**
 
@@ -2559,7 +2642,7 @@ Returns the contract name of the market.
 ContractType([market])
 ```
 
-Gets the contract type of the market (Vanilla, Inverse, or Quanto). Returns nil for spot/margin markets without contract details.
+Gets the contract type of the market (Vanilla, Inverse, or Quanto) as a number code; see Returns.
 
 **Parameters:**
 
@@ -2567,9 +2650,9 @@ Gets the contract type of the market (Vanilla, Inverse, or Quanto). Returns nil 
 |------|------|----------|-------------|
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
 
-**Returns:** `dynamic`
+**Returns:** `number`
 
-Returns VanillaContract, InverseContract, QuantoContract, or nil.
+Returns a number, not one of the contract-type constants: 2807 for a linear (USDT-margined) contract and 2808 for an inverse contract. Use MarketType() to tell spot from futures and ContractName() for the contract name.
 
 ---
 
@@ -2591,6 +2674,8 @@ Gets the value of a single contract, defined in their denomination.
 
 Returns the value of a single contract, defined in their denomination.
 
+On an inverse USD contract (for example `BYBIT_BTC_USD_PERPETUAL`) returns 1: one contract is worth 1 USD, and trade and position amounts are counted in contracts.
+
 ---
 
 ## GetAccountMarkets
@@ -2609,7 +2694,7 @@ An array of markets affiliated with a particular account.
 
 **Returns:** `dynamic`
 
-Returns an array with all the markets as a string.
+Returns a Lua table (1-based list) of market strings in the form `<EXCHANGE>_<BASE>_<QUOTE>_`, for example `BINANCE_BTC_USDT_`. Its size depends on the account.
 
 ---
 
@@ -2629,14 +2714,14 @@ An array of markets affiliated with a particular exchange.
 
 **Returns:** `dynamic`
 
-Returns an array with all the markets as a string.
+Returns a Lua table (1-based list) of market strings in the form `<EXCHANGE>_<BASE>_<QUOTE>_`, for example `BINANCE_BTC_USDT_`.
 
 ---
 
 ## IsTradeAmountEnough
 
 ```lua
-IsTradeAmountEnough(market, price, amount, [logWarning])
+IsTradeAmountEnough(market, price, amount, [logWarning], [reduceOnlyExit])
 ```
 
 Gets whether or not the trade amount is high enough for exchange limits.
@@ -2649,6 +2734,7 @@ Gets whether or not the trade amount is high enough for exchange limits.
 | `price` | `number` | Yes | The price on which to check the trade amount. |
 | `amount` | `number` | Yes | The amount to check. |
 | `logWarning` | `boolean` | No | If true, a warning is logged. |
+| `reduceOnlyExit` | `boolean` | No | If true, the amount is checked as a reduce-only exit. On spot markets, and on markets whose minimum is an amount rather than a notional value, it does not change the result. |
 
 **Returns:** `boolean`
 
@@ -2692,7 +2778,7 @@ Gets makers fee of the market.
 
 **Returns:** `number`
 
-Returns makers fee of the market.
+Returns makers fee of the market as a percentage (0.1 means 0.1 %).
 
 ---
 
@@ -2873,7 +2959,7 @@ Returns the quote currency as string.
 SetFee(percentage, [market])
 ```
 
-Saves a custom fee percentage which is used in back tests and returned by Fee().
+Saves a custom fee percentage which is used in back tests and returned by Fee(). Not a trading command: a script still needs a trading command to trade.
 
 **Parameters:**
 
@@ -2902,7 +2988,7 @@ Gets takers fee of the market.
 
 **Returns:** `number`
 
-Returns takers fee of the market.
+Returns takers fee of the market as a percentage (0.1 means 0.1 %).
 
 ---
 
@@ -2983,7 +3069,11 @@ Calculates the used margin for a specific position.
 
 **Returns:** `number`
 
-Returns the amount in the underlying currency value.
+Returns price × amount / leverage, in the underlying currency value. With leverage 0 (cross margin) the market's maximum leverage (`GetMaxLeverage()`) is used.
+
+On spot markets the leverage is ignored and the full notional (price × amount) is returned.
+
+On inverse contracts the amount is in contracts and the result is in the settlement coin: amount ÷ price ÷ leverage (for example `UsedMargin(market, 83563, 100, 10)` = 0.00011967 BTC). Margin, profit, fees, wallet and report figures are then all in the settlement coin.
 
 ---
 

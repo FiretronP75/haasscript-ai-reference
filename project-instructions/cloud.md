@@ -28,7 +28,7 @@ These are mandatory defaults. Deviate only on explicit user instruction.
 4. **Pre-flight is blocking, not advisory.** No backtest fires without a confirmed `account_id`, a validated market tag, and verified market data for the target period (see Mandatory Pre-Flight).
 5. **Version before you modify.** Create a named backup copy (`get_script` → `add_script`) before any breaking change to an existing script.
 6. **Regression-test every change.** After modifying a script, re-run a known-good backtest period and compare metrics against the prior result before moving on.
-7. **Booleans are numbers in Labs.** Any `Input()` that a lab may sweep must use `1`/`0` defaults, never `true`/`false` (which cause "Cannot parse '1' to a boolean value" errors).
+7. **Use numeric booleans.** Give any `Input()` that a lab may sweep a `1`/`0` default: a `true`/`false` input stays a Lua boolean even when a lab sets it to 1, so `flag == 1` is false.
 8. **Live bots are read-only.** The MCP can observe bots (state, performance, positions, orders, logs) but cannot create, modify, start, stop, or delete them. Bot management happens in the HTS web interface — tell the user this when they ask for bot changes.
 9. **Never hardcode server-specific values.** Resolve account GUIDs at runtime with `list_accounts`, market tags with `list_markets`, and always store the exact `service_id` string returned by `execute_backtest` (it differs per deployment).
 10. **Lab drill-in is single-call.** Pass `lab_id` together with a result entry's `BID` to `get_backtest_info`, `get_backtest_runtime`, `get_backtest_logs`, or `get_backtest_positions` to inspect any lab combo directly. No re-run-as-standalone step is needed for analysis.
@@ -54,12 +54,16 @@ HaasOnline plans gate features and capacities that directly shape this connector
 | Max **Labs** window | — | 31 days | 31 days | 12 months |
 | Trade bots | 3 | 8 | 20 | 100+ |
 | Max orders per bot | 15 | 25 | 50 | 150 |
-| High-speed tick interval | 10 s | 10 s | 10 s | 5 s |
+| High-speed tick interval | about 10 s | about 10 s | about 10 s | 5 s |
 | Hosting | Cloud | Cloud | Cloud | Self-hosted / managed |
+
+On the cloud plans the high-speed interval is not fixed: updates arrive roughly every 10 to 16 seconds, so do not rely on a fixed 10-second interval.
 
 A "month" is implemented as **exactly 31 days**, so the standalone caps are 31 d
 (Starter), **186 d** (Standard), **372 d** (Professional) and 1,116 d
 (TradeServer). The trial runs at Standard's 186 d.
+
+"Max orders per bot" counts open (tracked) orders only; cancelled and filled orders do not count. In backtests the cap is 150 whatever the plan, so a backtest can hold more open orders than a live bot on Starter, Standard or Professional is allowed. An order over the cap is not placed: the command logs "Limit of N tracked orders reached." as a warning and returns an empty string, with no Lua error, so check the returned identifier and keep grids below the plan's cap.
 
 Work within the user's tier:
 
@@ -78,7 +82,7 @@ Work within the user's tier:
 
 - Built on Lua with 750+ built-in commands. Case-sensitive.
 - **Array indexing starts at 1.** Index 0 throws an error. In price arrays, index `[1]` is the most recent value.
-- Scripts execute once per minute by default; with `EnableHighSpeedUpdates()`, execution runs at the licence's tick interval (10 s on cloud plans, 5 s on TradeServer).
+- Scripts execute once per minute by default; with `EnableHighSpeedUpdates()`, execution runs at roughly the licence's tick interval (5 s on TradeServer). On cloud plans high-speed updates arrive roughly every 10 to 16 seconds; do not rely on a fixed 10-second interval.
 - `Log()` replaces Lua's `print()`.
 - **Never use Lua's `math.*` library** on values produced by HaasScript commands — use the built-ins: `Abs()`, `Round()`, `Max()`, `Min()`, `Floor()`, `Ceil()`, etc.
 - `Time()` returns the current Unix timestamp.
@@ -214,7 +218,7 @@ Finalize(function() CustomReport("Metric Name", value) end)
 | `list_scripts` | All HaasScript records with `SID` (script ID), `SN` (name), `ST` (type), `IV` (is valid), folder info. Large result — if the client stores it to a file, search the file instead of re-calling. |
 | `get_script(script_id)` | Full record: source code, compile result, inputs, folder. |
 | `compile_script(source_code)` | Compile without saving. Returns `isValid`, `errors`, `log`, `inputs` (each with `name`, hash-prefix `key`, `type`, `group`, `tooltip`, `defaultValue`) and capability flags (`isSpotSupported`, `isManagedTrading`, …). Use it to validate syntax and discover input keys before creating or editing scripts. Watch the log for static-scan fallback warnings about conditionally-declared inputs. |
-| `add_script(name, script, type)` | Create and compile a new script; returns the record including `SID`. `type` is `"Lua"`, `"Visual"`, or `"Command"`; `description` optional. |
+| `add_script(name, script, type)` | Create and compile a new script; returns the record including `SID`. `type` is `"Lua"`, `"Visual"`, or `"Command"`; `description` optional. The compile result also lists the registered inputs in creation order (`I`: type code `T`, group `G`, key, label `N`, tooltip `TT`, value `V`, default `D`, options `O`). Type codes: 0 number, 1 string, 2 boolean, 3 enum drop-down, 7 account-market, 10 group header. |
 | `edit_script_source(script_id, source_code, settings)` | Replace source and recompile in place — preserves the script ID and its backtest history. `settings` is required and must include at minimum `accountId`, `marketTag`, `interval`, `tradeAmount`, `chartStyle`, `orderTemplate` — always pass the full Settings Object (below). |
 | `delete_script(script_id)` | Permanent delete. |
 
@@ -231,7 +235,7 @@ Finalize(function() CustomReport("Metric Name", value) end)
 | `get_backtest_info(backtest_id [, lab_id])` | Summary. Standalone shape: `BID`, `BS`/`BE` (data window), `ES`/`EE` (execution wall-clock), `ST` (scriptId_scriptName), `AT` (account), `ME` (market), `PT` (formatted profit, e.g. `"12.3_USDT"`), `RT` (formatted ROI). With `lab_id` it instead returns the lab-result entry shape (same as `get_lab_results` entries). |
 | `get_backtest_runtime(backtest_id [, lab_id])` | Full runtime: `Reports` (keyed `{accountId}_{market}` — fees `F`, performance `PR` with `ROI`/`RP`/`UP`, orders `O`, positions `P`, ratios `T` incl. Sharpe `SHR`), `CustomReport`, `InputFields` (hash-prefix keys, `V`=applied value, `D`=default), `FinishedPositions`, `OpenOrders`, `FailedOrders`, `ManagedLongPosition`/`ManagedShortPosition`, `PositionMode`, `MarginMode`, and `Files` (export files by name with `Headers` — `Rows` are ALWAYS empty here by design; use `get_backtest_export_data`). Occasionally returns "not found" immediately after `S=3` flips — retry after ~1s. |
 | `get_backtest_export_data(backtest_id, name [, format, lab_id])` | Retrieve rows of an export file written via `InitExportData`/`WriteExportData`. The ONLY way to read export rows over MCP. `format="csv"` (default: header line + rows) or `"json"` (array of row objects, values as strings). Empty result = no file / no rows. Very large files can exceed the ~1MB transport cap — keep exports lean. |
-| `get_backtest_logs(backtest_id [, next_page_id, page_length, lab_id])` | Paginated log lines. Defaults `next_page_id=0`, `page_length=200` (max 2000). Response: `I` (lines), `NP` (next cursor, `-1` when exhausted), `total_count`. Logs can run to thousands of lines even for tiny runs — always paginate. |
+| `get_backtest_logs(backtest_id [, next_page_id, page_length, lab_id])` | Paginated log lines. Defaults `next_page_id=0`, `page_length=200` (max 2000). Response: `I` (lines), `NP` (next cursor, `-1` when exhausted), `total_count`. Logs can run to thousands of lines even for tiny runs — always paginate. Each line reads `time ||| level ||| text`, level 0 info, 1 order events, 2 warning, 3 error; on a colored `Log(message, color)` line the middle field holds the color as a CSS string instead (constants and `Color(...)` as `rgba(r, g, b, a)`). |
 | `get_backtest_positions(backtest_id, next_page_id, page_length [, lab_id])` | Paginated trade-level history. Response: `I` (positions), `NP` (`-1` when exhausted). On the lab path, positions are paginated client-side from the lab runtime; `page_length` clamps to 1000. |
 | `get_backtest_history(next_page_id, page_length)` | Paginated list of all stored standalone backtests (lab backtests excluded). No script/market filter — match names client-side. |
 | `list_active_backtests` | All currently running or queued backtests. |
@@ -268,7 +272,7 @@ Pass as a **native JSON object**, never a pre-serialised string:
 | Tool | Purpose & key facts |
 |------|---------------------|
 | `list_accounts` | All exchange accounts. Key fields per record: `AID` (account GUID), `N` (name), `EC` (exchange code), `IS` (`true` = simulated/paper account), `PM` (position mode). Prefer a simulated account (`IS=true`) for backtests. Result can be large — search the stored file if the client saves it. |
-| `list_markets` | No params → summary of every supported exchange with market counts. With `exchange_code` → paginated market records (`page_length` default 100, max 500; follow `next_page_id`). |
+| `list_markets` | No params → summary of every supported exchange with market counts. With `exchange_code` → paginated market records (`page_length` default 100, max 500; follow `next_page_id`). Each market record's `CD` holds `HL`, the market's maximum leverage (the same value as `GetMaxLeverage`). |
 | `check_market_data(market, start_unix, end_unix, interval)` | Returns OHLCV candles (`T`,`O`,`H`,`L`,`C`,`V` + bid `B`/ask `S`), most recent first. Non-empty = data present. **Check narrow slices** (a few hours at the start and end of the target window), not the whole period — full-period responses are huge. |
 | `sync_market_data(market)` | Trigger a historical data download for a market. Only `market` is accepted — the date range is managed server-side. |
 
@@ -421,6 +425,8 @@ Requires a plan with HaasLabs (Standard or higher — see Licence Tiers); otherw
 
 Rule out lab combos with fewer than ~5 trades (insufficient sample). Prefer candidates that perform well across neighbouring parameter values over isolated spikes.
 
+Lab combination logs can print "WARNING: Parameter '<key>' matches no registered input (by key or by name) — NOT applied, the script uses its compiled default." before compiling, even when the value is applied. Confirm the applied values from the "Updated input '<label>' from X to Y" lines (or `InputFields` in the runtime) instead.
+
 ### 5. Debug a zero-trade or unexpected backtest
 
 ```
@@ -526,7 +532,7 @@ Verify before every `add_script` / `edit_script_source`:
 
 - All `Input()` calls at top level; numeric `1`/`0` defaults for any boolean a lab may sweep.
 - Every command signature confirmed via `search_haasscript_docs` (no guessed names or parameters).
-- No `math.*` calls — HaasScript builtins only. All array access 1-based. `Time()` for the current Unix timestamp.
+- Prefer HaasScript builtins to `math.*` (available on TradeServer Cloud, but not for values produced by HaasScript commands). All array access 1-based. `Time()` for the current Unix timestamp.
 - Every `Load()` key has a matching `Save()`; state that must not leak across runs is reset in `Finalize()`.
 - Position-state and open-order checks guard every trade call.
 - `OptimizedForInterval()` wraps interval-based indicator work in scripts that will be backtested repeatedly.

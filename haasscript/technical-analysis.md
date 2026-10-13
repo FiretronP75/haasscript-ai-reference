@@ -12,6 +12,8 @@
 
 # Easy Indicators
 
+Easy indicators register their own input fields in a settings group labeled '<Command> <name> Settings' (for example 'EasyRSI Settings', or 'EasyRSI MyRsi Settings' with a name). The `name` labels the group only; the input names are not prefixed, so two Easy indicators of the same kind create inputs with the same names. Easy indicators are not trading commands; a script still needs a trading command to trade. An invalid `interval` stops the script without `pcall` catching it. Valid intervals: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 720, 1440, 2880, 4320, 10080, 20160, 41760.
+
 ## EasyABANDS
 
 ```lua
@@ -24,7 +26,7 @@ Automatically defines the input fields, calculates the ABANDS, plots the chart a
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -46,7 +48,7 @@ Automatically defines the input fields, calculates the ADOSC, plots the chart an
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -88,7 +90,7 @@ Automatically defines the input fields, calculates the AO, plots the chart and r
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -110,7 +112,7 @@ Automatically defines the input fields, calculates the APO, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -132,7 +134,7 @@ Automatically defines the input fields, calculates the AROON, plots the chart an
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -154,7 +156,7 @@ Automatically defines the input fields, calculates the AROONOSC, plots the chart
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -176,7 +178,7 @@ Automatically defines the input fields, calculates the BBANDS, plots the chart a
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -198,7 +200,7 @@ Automatically defines the input fields, calculates the BBANDS %B, plots the char
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -220,7 +222,7 @@ Automatically defines the input fields, calculates the BBANDS %W, plots the char
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -242,7 +244,7 @@ Automatically defines the input fields, calculates the BOP, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -264,7 +266,7 @@ Automatically defines the input fields, calculates the CCI, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -286,7 +288,7 @@ Automatically defines the input fields, calculates the CDL, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -308,7 +310,7 @@ Automatically defines the input fields, calculates the CMO, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -330,7 +332,7 @@ Automatically defines the input fields, calculates the COPPOCK, plots the chart 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -352,7 +354,7 @@ Automatically defines the input fields, calculates the CRSI, plots the chart and
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -374,7 +376,7 @@ Automatically defines the input fields, calculates the ADX, +DI, -DI, plots the 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -396,7 +398,7 @@ Automatically defines the input fields, calculates the DONCHIAN, plots the chart
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -418,7 +420,7 @@ Automatically defines the input fields, calculates the DPO, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -440,7 +442,7 @@ Automatically defines the input fields, calculates the DX, plots the chart and r
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -462,7 +464,7 @@ Automatically defines the input fields, calculates the DynamicBuySellLevel, plot
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -484,7 +486,7 @@ Automatically defines the input fields, calculates the FastRSI, plots the chart 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -506,7 +508,7 @@ Automatically defines the input fields, calculates the FIBONACCI, plots the char
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -528,7 +530,7 @@ Automatically defines the input fields, calculates the FixedLongShort, plots the
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -550,7 +552,7 @@ Automatically defines the input fields, calculates the ICHIMOKU, plots the chart
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -572,7 +574,7 @@ Automatically defines the input fields, calculates the IMI, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -594,7 +596,7 @@ Automatically defines the input fields, calculates the KELTNER, plots the chart 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -616,7 +618,7 @@ Automatically defines the input fields, calculates the KRI, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -638,7 +640,7 @@ Automatically defines the input fields, calculates the KST, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -660,7 +662,7 @@ Automatically defines the input fields, calculates the LINEARREG, plots the char
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -676,19 +678,19 @@ Returns a signal based on the GetAboveBelowSignal() template.
 EasyMA(chartIndex, [name], [interval])
 ```
 
-Automatically defines the input fields, calculates the MA, plots the chart and returns the signal.
+Automatically defines the input fields, calculates the MA, plots the chart and returns the signal. Inputs: 'Long Type', 'Long Length' (default 26), 'Short Type', 'Short Length' (default 9); the default MA type is SMA.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
 **Returns:** `enum`
 
-Returns a signal based on the GetAboveBelowSignal() template. Signals are produced when faster MA crosses above or below the slower MA.
+Returns a signal based on the GetAboveBelowSignal() template: SignalLong on every bar while the faster MA is above the slower MA and SignalShort while it is below (not only on the crossing bar).
 
 ---
 
@@ -698,13 +700,13 @@ Returns a signal based on the GetAboveBelowSignal() template. Signals are produc
 EasyMACD(chartIndex, [name], [interval])
 ```
 
-Automatically defines the input fields, calculates the MACD, plots the chart and returns the signal.
+Automatically defines the input fields, calculates the MACD, plots the chart and returns the signal. Inputs: 'Short Period' (default 12), 'Long Period' (default 26), 'Signal Length' (default 9), 'Signal Type'; the default signal type compares the MACD line with its signal line. Returns the current side on every bar (SignalLong while MACD is above the signal line, SignalShort while below), not only on the crossing bar.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -726,7 +728,7 @@ Automatically defines the input fields, calculates the MFI, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -748,7 +750,7 @@ Automatically defines the input fields, calculates the MOM, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -770,7 +772,7 @@ Automatically defines the input fields, calculates the OBV, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -792,7 +794,7 @@ Automatically defines the input fields, calculates the PPO, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -814,7 +816,7 @@ Automatically defines the input fields, calculates the ROC, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -830,13 +832,13 @@ Returns a signal based on ROC, it's MA and selected signal type.
 EasyRSI(chartIndex, [name], [interval])
 ```
 
-Automatically defines the input fields, calculates the RSI, plots the chart and returns the signal.
+Automatically defines the input fields, calculates the RSI, plots the chart and returns the signal. Inputs: 'Period Length' (default 12), 'Buy Level' (default 30), 'Sell Level' (default 70).
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -858,7 +860,7 @@ Automatically defines the input fields, calculates the SAR, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -880,7 +882,7 @@ Automatically defines the input fields, calculates the SlowRSI, plots the chart 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -902,7 +904,7 @@ Automatically defines the input fields, calculates the SSTOCH, plots the chart a
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -924,7 +926,7 @@ Automatically defines the input fields, calculates the STOCH, plots the chart an
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -946,7 +948,7 @@ Automatically defines the input fields, calculates the STOCHF, plots the chart a
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -968,7 +970,7 @@ Automatically defines the input fields, calculates the STOCHRSI, plots the chart
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -990,7 +992,7 @@ Automatically defines the input fields, calculates the TRIX, plots the chart and
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -1012,7 +1014,7 @@ Automatically defines the input fields, calculates the TSI, plots the chart and 
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -1034,7 +1036,7 @@ Automatically defines the input fields, calculates the UDRSI, plots the chart an
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -1056,7 +1058,7 @@ Automatically defines the input fields, calculates the ULTOSC, plots the chart a
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -1078,7 +1080,7 @@ Automatically defines the input fields, calculates the WILLR, plots the chart an
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -1100,7 +1102,7 @@ Automatically defines the input fields, calculates the ZLMA, plots the chart and
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartIndex` | `number` | Yes | Chart index on which to plot. |
+| `chartIndex` | `number` | Yes | Chart pane on which to plot: 0 is the price chart (use it for price overlays such as EasyMA); 1, 2, … open separate panes (use them for oscillators such as EasyRSI and EasyMACD, which on 0 stretch the price axis down to 0). |
 | `name` | `string` | No | Unique name of the indicator. |
 | `interval` | `number` | No | Used interval for price data. Default is 0 and the main interval will be used. |
 
@@ -2505,8 +2507,9 @@ MAXINDEX(prices, period)
 ```
 
 Max Index (MAXINDEX) will return the index of the
-highest high in source data within the given period. You can see this index as the "distance"
-to the highest high. To get the highest high value, use this index with the input
+highest high in source data within the given period, as a 1-based position from the newest
+element (newest = 1), so the number of bars ago is the result minus 1. For example,
+`MAXINDEX({1, 9, 3, 4, 5}, 5)` = 2. To get the highest high value, use this index with the input
 array or use GetHigh/GetHighs command instead.
 
 **Parameters:**
@@ -2635,8 +2638,9 @@ MININDEX(prices, period)
 ```
 
 Min Index (MININDEX) will return the index of the
-lowest low in source data within the given period. You can see this index as the "distance"
-to the lowest low. To get the lowest low value, use this index with the input
+lowest low in source data within the given period, as a 1-based position from the newest
+element (newest = 1), so the number of bars ago is the result minus 1. For example,
+`MININDEX({5, 4, 1, 3}, 4)` = 3. To get the lowest low value, use this index with the input
 array or use GetLow/GetLows command instead.
 
 **Parameters:**
@@ -3158,6 +3162,7 @@ the size of recent price moves of an asset, to predict how volatile the price ma
 future. It can help you decide whether the volatility of the price is likely to increase
 or decrease.
 This indicator is usually plotted on its own chart.
+It is the population standard deviation (divides by period, not period - 1): `STDDEV({1, 2, 3, 4, 5}, 5, 1)` = 1.4142.
 
 **Parameters:**
 
@@ -3165,7 +3170,7 @@ This indicator is usually plotted on its own chart.
 |------|------|----------|-------------|
 | `prices` | `HaasNumberCollection` | Yes | Source data. |
 | `period` | `number` | Yes | Period length. |
-| `deviation` | `number` | Yes | Amount of deviation. |
+| `deviation` | `number` | Yes | Multiplier applied to the population standard deviation (1 = the plain standard deviation). |
 
 **Returns:** `HaasNumberCollection`
 
@@ -3756,6 +3761,8 @@ Checks if a crossover occurs between value1 and value2.
 
 Returns true if a crossover occurs between value1 and value2. Otherwise false.
 
+Pass at least one series. With two plain numbers the command logs an engine error, returns false, and the backtest is marked as failed.
+
 ---
 
 ## CrossOverSince
@@ -3775,7 +3782,7 @@ Calculates the number of ticks since the last crossover.
 
 **Returns:** `number`
 
-Returns the number of ticks since the last crossover. Return value of 1 represents the crossunder happening 'now'.
+Returns the number of ticks since the last crossover. Return value of 1 represents the crossover happening 'now'; 999 means no crossover in the data.
 
 ---
 
@@ -3827,7 +3834,7 @@ Returns the number of ticks since the last crossunder. Return value of 1 represe
 GetSwing(input1, input2)
 ```
 
-Calculates the amount of swing in percentages.
+Calculates the amount of swing in percentages: (input1 - input2) / input2 * 100, element by element. A number is applied to every element, for example `GetSwing(10, 12)` = -16.67.
 
 **Parameters:**
 
@@ -3849,6 +3856,8 @@ IsFalling(array, lookback)
 ```
 
 Checks if the values are decreasing towards the newest within the lookback period.
+
+Makes `lookback` comparisons from the newest value back (`lookback + 1` values): `IsFalling({1, 2, 3, 4}, 3)` is true (index 1 is the newest). The array must hold more than `lookback` values; a shorter array can fail the backtest with "Execution error occurred. Argument out of range exception."
 
 **Parameters:**
 
@@ -3891,6 +3900,8 @@ IsRising(array, lookback)
 ```
 
 Checks if the values are increasing towards the newest within the lookback period.
+
+Makes `lookback` comparisons from the newest value back (`lookback + 1` values). Equal neighbours count as rising: `IsRising({5, 5, 3, 2}, 2)` is true (index 1 is the newest). The array must hold more than `lookback` values; a shorter array can fail the backtest with "Execution error occurred. Argument out of range exception."
 
 **Parameters:**
 

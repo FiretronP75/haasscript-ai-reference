@@ -24,7 +24,7 @@ These are mandatory defaults. Deviate only with explicit user override.
 ### Language Foundation
 - Built on top of Lua but includes 750+ built-in commands specific to cryptocurrency trading.
 - Case-sensitive. Array indexing starts at 1 (not 0).
-- Executes on a per-minute basis by default (can run every 10 seconds on Cloud, 5 seconds on Enterprise with high-speed enabled).
+- Executes on a per-minute basis by default (can run about every 10 seconds on Cloud, 5 seconds on Enterprise with high-speed enabled; on Cloud, high-speed updates arrive roughly every 10 to 16 seconds, so do not rely on a fixed 10-second interval).
 - Supports both script editor (code-based) and visual editor (node-based) development.
 - Custom commands can be created for reusable logic across multiple scripts.
 
@@ -193,8 +193,9 @@ end
 
 **Signal consensus**
 ```lua
-local rsiSignal = EasyRSI(14, 30, 70)
-local macdSignal = EasyMACD(12, 26, 9)
+-- Easy indicators take (chartIndex, [name], [interval]), not the indicator's periods or levels
+local rsiSignal = EasyRSI(0)
+local macdSignal = EasyMACD(0)
 if rsiSignal == SignalLong and macdSignal == SignalLong then
     DoLong("Consensus Long")
 elseif rsiSignal == SignalShort and macdSignal == SignalShort then
@@ -205,8 +206,8 @@ end
 **Signal containers**
 ```lua
 local signals = IndicatorContainer(signal1, signal2, signal3)
-local unanimousSignal = signals[2]  -- All must agree
-local consensusSignal = signals[3]  -- Majority (>50%)
+local unanimousSignal = signals.unanimousSignal  -- All must agree (also signals[1])
+local consensusSignal = signals.consensusSignal  -- Majority (>50%) (also signals[2])
 DoSignal(consensusSignal)
 ```
 

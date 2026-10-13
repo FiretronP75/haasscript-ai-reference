@@ -116,6 +116,8 @@ constrain instrumentation work:
 | Trade bots | 3 | 8 | 20 | 100+ |
 | Max orders per bot | 15 | 25 | 50 | 150 |
 
+The cap counts open orders only, and backtests use 150 on every plan.
+
 Two things follow. **Starter cannot run this workflow at all** — no MCP connector, no Labs,
 no data export. And a Cloud MCP customer is on Standard or Pro, both of which have a
 **1-month lab cap**, so every sweep in this document is a 31-day sweep. Only TradeServer
@@ -204,7 +206,8 @@ Two rules that make the captured data useful:
    an existing lab via `get_lab_details` rather than hand-assembling one.
 4. **Run.** `execute_backtest`, store the exact `service_id` string it returns, poll
    `get_backtest_status` to `S=3`. Run short-side strategies on a margin/futures account —
-   on spot, `DoShort` is a no-op and short decisions log but never fill.
+   on spot, `DoShort` only exits a long (with no position it is blocked), so short
+   decisions log but never open a short.
 5. **Verify the run before trusting the data.** Check `get_backtest_logs` for execution
    errors and confirm the export row count matches the trade count you expect. A failed run
    still reports `S=3` at 100% (see gotchas).
@@ -291,7 +294,8 @@ their context, log the configured SL/TP levels as extra columns on the entry row
 Same idea for unmanaged order flow: capture at the `Place*` call and track your own position
 flag. HaasScript will warn *"No order handling command detected"* — expected. For trigger
 capture you don't need fill polling (the join supplies outcomes from the ledger); for
-production add order-handling checks.
+production add order-handling checks. Reading orders with `GetAllOpenOrders` (an Order
+Information command) does not clear this warning.
 
 ```lua
 local rsiLength    = Input("RSI Length", 14)
@@ -371,7 +375,7 @@ end)
 
 - All `Input()` calls at top level; booleans use `1`/`0` so Labs can sweep them.
 - Every `Save` key has a `Load` with a default, and every edge/state flag resets in `Finalize`.
-- No `math.*` — use HaasScript builtins (`Round`, `Max`, `Min`, `Abs`). `Round(input, digits)`.
+- Prefer HaasScript builtins (`Round`, `Max`, `Min`, `Abs`) to `math.*`, which is available on TradeServer Cloud but should not be used on values produced by HaasScript commands. `Round(input, digits)`.
 - Array access starts at index **1**.
 - Value count in `WriteExportData` must equal the header count in `InitExportData`.
 - `InitExportData` is called every tick by design — it is idempotent registration and does
@@ -432,7 +436,7 @@ three checks a habit:
    gating bug; a handful when you expected dozens means the run died early.
 3. `get_backtest_positions` returns a non-empty ledger.
 
-A **spot-short flood** is the classic gating bug: on a spot account `DoShort` is a no-op, so
+A **spot-short flood** is the classic gating bug: on a spot account `DoShort` with no position is blocked, so
 a `posDir == NoPosition` gate never clears and the short branch re-fires every minute the
 signal holds. Edge-gating (Pattern A) makes no-ops simply never log.
 
@@ -743,7 +747,7 @@ compare win rate per bucket, correlate features with P&L, or filter to a single 
 - **Engine-driven exits have no decision row.** They appear in the join with
   `exit_source=engine_or_unmatched`. Their entry features remain valid evidence; don't try
   to tune an exit threshold from them.
-- **Spot can't short.** `DoShort` is a no-op — short decisions log but never fill, and a
+- **Spot can't short.** `DoShort` only exits a long (with no position it is blocked) — short decisions log but never open a short, and a
   naive gate will re-fire every minute. Use margin/futures, and edge-gate regardless.
 - **`Save`/`Load` persist across runs.** Reset every instrumentation flag in `Finalize()` or
   a stale value leaks into the first ticks of the next backtest.

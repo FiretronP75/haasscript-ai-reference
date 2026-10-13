@@ -33,7 +33,7 @@ Converts HEX to RGBA with opacity.
 
 **Returns:** `string`
 
-Returns a RGBA color string.
+Returns a RGBA color string with the opacity as a fraction from 0 to 1, for example `ChangeColorOpacity("#FF0000", 20)` returns `"rgba(255, 0, 0, 0.2)"`.
 
 ---
 
@@ -95,7 +95,7 @@ Gives control over chart options such as title and height.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `chartId` | `number` | Yes | The chart index on which to apply the options. |
+| `chartId` | `number` | Yes | The chart index on which to apply the options. 0 is the main price chart, positive ids are panes below it and negative ids panes above it. -1 is blocked ("Chart Id -1 is blocked.") and fails the script; use -2 and lower for panes above. |
 | `title` | `string` | No | Chart title. |
 | `height` | `number` | No | Chart height. Below 1 will be treated as percentage (0.5-50%). |
 | `style` | `enum` | No | Price plot style. |
@@ -125,7 +125,7 @@ Creates a line options object to be used for Plot().
 | `id` | `string` | No | Unique identifier. |
 | `behind` | `boolean` | No | If true, the line will be plotted behind the price chart, if enabled. |
 | `ignoreOnAxis` | `boolean` | No | If true, the line will not be taken into consideration when calculating the range on the y-axis. |
-| `drawTrailingLine` | `boolean` | No | If true, a dotted line will be drawn from the last data point to the y-axis. |
+| `drawTrailingLine` | `boolean` | No | A dotted line from the last data point to the y-axis. Drawn by default. |
 
 **Returns:** `dynamic`
 
@@ -158,7 +158,7 @@ Changes the color of a single candle.
 Plot(chartId, lineName, value, [color/options])
 ```
 
-Creates a data line on the chart. The line can be styled accordingly. A positive chartId will place the line below the main price chart. A negative index above.
+Creates a data line on the chart. The line can be styled accordingly. Use 0 for the main price chart; a positive chartId will place the line below it, a negative chartId above it. Panes further from the price chart take ids further from 0. Chart id -1 draws nothing; use -2 and lower for panes above.
 
 **Parameters:**
 
@@ -166,8 +166,8 @@ Creates a data line on the chart. The line can be styled accordingly. A positive
 |------|------|----------|-------------|
 | `chartId` | `number` | Yes | Index on which to plot the line. |
 | `lineName` | `string` | Yes | The name of the lines. This needs to be unique per index. |
-| `value` | `number|table` | Yes | Value of the data point. |
-| `color/options` | `dynamic` | No | Line options object or a color string. |
+| `value` | `number|table` | Yes | Value of the data point. Must not be nil: a nil value aborts the backtest ("Plot(): Attempting to call with 'null' value for value."). |
+| `color/options` | `dynamic` | No | Line options object or a color string. A line has one color for its whole length; changing the color on later updates does not color individual bars. |
 
 **Returns:** `string`
 
@@ -490,7 +490,7 @@ Draws a shape above the candle or first line on the chart.
 | `shape` | `enum` | No | The shape type. |
 | `color` | `string` | No | The color of the shape. |
 | `size` | `number` | No | Size of the shape. |
-| `aboveCandle` | `boolean` | No | If true, the shape will be drawn above the candle else below. |
+| `aboveCandle` | `boolean` | No | If true, the shape will be drawn above the candle else below. Default true. |
 | `text` | `string` | No | Text above or below the candle or shape. |
 | `textColor` | `string` | No | The color of the text. |
 | `offset` | `number` | No | A positive offset will move the data points x number of candles. A negative number will move the data points back. |
@@ -683,6 +683,10 @@ This defines the name and description of the custom command. This information wi
 
 **Returns:** `void`
 
+Call the saved command from another script as `CC_<name>(...)`, where `<name>` is this `name` argument (not the name the script is saved under), with the arguments in `DefineParameter` order. A `DefineOutput(NumberType, ...)` result arrives as a plain number. `Log` lines written inside the command appear in the calling script's log, in call order.
+
+Custom command scripts allow only local variables. Saving a command that assigns a global fails to compile with ``ERROR: Only local variables are allowed. Make sure they are defined `local`. (<name>)``, naming the variable.
+
 ---
 
 ## DefineEasyIndicatorOutput
@@ -737,6 +741,8 @@ DefineIntervalOptimization(interval)
 ```
 
 Optimizes the custom command for back tests. Only use this if the command needs updates once every interval tick.
+
+In backtests the command body runs on the first call and then once per candle close of the interval; in between, every call returns the cached result. The cache does not depend on the arguments or the call site: a call with different arguments receives the result of the last computed call until the next candle close. Only use it for a command that is always called with the same arguments.
 
 **Parameters:**
 
@@ -803,7 +809,7 @@ Defines the parameter for a custom command.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `type` | `enum` | Yes | The parameter type enum. |
+| `type` | `enum` | Yes | A Parameter Type constant: NumberType, ListNumberType, BooleanType, ListDynamicType, StringType, DynamicType, VoidType or EnumType. Data Types constants such as BoolDataType are a compile error ("DefineParameter(): Wrong constant used."). |
 | `name` | `string` | Yes | The input parameter name. |
 | `description` | `string` | Yes | The input parameter description. |
 | `isRequired` | `boolean` | Yes | If true, the command requires the parameter to be defined. |
@@ -847,6 +853,10 @@ Input(label, [defaultValue], [tooltip], [group])
 
 Creates a script input field. The type is depending on the default value. It can be a number, text or boolean (checkbox) field. Without default value, it will be a text field.
 
+> **Note:** Call input commands unconditionally at the top level of the script, on every update. An input called only inside a conditional branch is registered through a static-scan fallback and resolved by name with a "Found input on name but not on key" warning on every call.
+
+> **Note:** Labels should be unique. Two inputs with the same label create two separate fields and keep separate values while the script is unchanged, and the compiler warns "Multiple inputs share the name '<label>'". After an edit that moves them, saved settings and labs cannot tell them apart, and both fall back to their default values.
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -854,11 +864,11 @@ Creates a script input field. The type is depending on the default value. It can
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `dynamic` | No | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `dynamic`
 
-Returns the input value.
+Returns the input value in the type of the default value. A `true`/`false` default returns a boolean, so compare it with `true` (or use it directly in a condition), not with `1`.
 
 ---
 
@@ -876,7 +886,7 @@ Creates an account selection field.
 |------|------|----------|-------------|
 | `label` | `string` | Yes | The field label text. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `string`
 
@@ -890,7 +900,7 @@ Return the selected account guid.
 InputAccountMarket(label, [tooltip], [group])
 ```
 
-Creates an account, market & leverage dropdown.
+Creates two dropdowns, labelled '<label> account' and '<label> market', on spot and on leverage accounts alike.
 
 **Parameters:**
 
@@ -898,11 +908,11 @@ Creates an account, market & leverage dropdown.
 |------|------|----------|-------------|
 | `label` | `string` | Yes | The field label text. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `string`
 
-Returns a combined string. For example 9c9aaf1f-469b-4eea-bca3-df61db37c549_BITFINEX_BTC_USD_.
+Returns a combined string `<account guid>_<market>`, where `<market>` is the market string `PriceSource_Base_Quote_Contract` (the contract part is empty on spot). For example `<account guid>_BINANCE_BTC_USDT_`.
 
 ---
 
@@ -921,7 +931,7 @@ Creates a button in the input field. When press in the UI, the bot will receive 
 | `label` | `string` | Yes | The field label text. |
 | `callback` | `Function` | Yes | The callback which will be executed when the button is pressed. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `void`
 
@@ -942,7 +952,7 @@ Creates a dropdown with available Candlestick Pattern (CDL) types. Can be used i
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | Yes | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -958,6 +968,8 @@ InputConstant(label, defaultValue, [tooltip], [group])
 
 Creates a dropdown with available constant in the category of the defaultValue. If for example SignalLong is set as default, all the signal constants will be available in the dropdown.
 
+> **Warning:** Called only inside a conditional branch, `InputConstant` fails with "Object reference not set to an instance of an object." and the backtest fails; `pcall` does not catch it. Called unconditionally at the top level it works normally.
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -965,7 +977,7 @@ Creates a dropdown with available constant in the category of the defaultValue. 
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | Yes | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -979,7 +991,7 @@ Returns the selected constant type as constant.
 InputGroupHeader(label)
 ```
 
-Creates a group header, separating input sets.
+Creates a group header, separating input sets. Every input created after it without its own group, `InputAccountMarket` included, joins this header's group until the next `InputGroupHeader`. Create inputs meant to stay ungrouped before the first header. The header itself is registered as an input.
 
 **Parameters:**
 
@@ -1006,7 +1018,7 @@ Creates an interval dropdown.
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `number` | No | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `number`
 
@@ -1029,7 +1041,7 @@ Creates a dropdown with the available LR types.
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | No | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -1052,7 +1064,7 @@ Creates a market dropdown. The market options are related to the main account se
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `string` | No | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `string`
 
@@ -1075,7 +1087,7 @@ Creates a dropdown with available MA types. Can be used in combination with a va
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | Yes | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -1099,7 +1111,7 @@ Creates a dropdown with custom options.
 | `defaultValue` | `string` | Yes | The default value for the field. |
 | `options` | `dynamic` | Yes | Options list/array. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `string`
 
@@ -1122,7 +1134,7 @@ Creates a dropdown with the default available order types.
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | No | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -1145,7 +1157,7 @@ Creates a price source dropdown.
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `string` | No | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `string`
 
@@ -1169,7 +1181,7 @@ Creates a price source & market dropdown.
 | `defaultValue` | `string` | No | The default value for the field. |
 | `type` | `enum` | No | Optional parameter to restrict market types. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `string`
 
@@ -1192,7 +1204,7 @@ Creates multiple dropdown options for signal management and mapping.
 | `label` | `string` | Yes | The field label text. |
 | `signal` | `enum` | Yes | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -1215,7 +1227,7 @@ Creates a dropdown with available Signal Types. Can be used in combination with 
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | Yes | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -1238,7 +1250,7 @@ Creates a dropdown with available Source Price types. Can be used in combination
 | `label` | `string` | Yes | The field label text. |
 | `defaultValue` | `enum` | Yes | The default value for the field. |
 | `tooltip` | `string` | No | The tooltip text for the field. |
-| `group` | `string` | No | The group of the input field. |
+| `group` | `string` | No | The group of the input field. Case-sensitive, but the panel shows the name in upper case, so do not use case alone to distinguish groups. |
 
 **Returns:** `enum`
 
@@ -1382,7 +1394,7 @@ Gets the current fee percentage of the main or specific market.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `market` | `string` | No | The guid returned by AccountGuid(), InputAccount or InputAccountMarket for example. |
+| `market` | `string` | No | A market string (for example PriceMarket()) or the guid returned by AccountGuid(), InputAccount or InputAccountMarket. |
 
 **Returns:** `number`
 
@@ -1503,7 +1515,7 @@ Deactivates the bot. Once the bot is deactivated, it can only manually activate 
 DisableIndicatorContainerLogs()
 ```
 
-Disables IndicatorContainer log messages.
+Disables IndicatorContainer log messages. Call it once: from that point, every later `IndicatorContainer` call, on the same and later updates, is silent.
 
 **Returns:** `void`
 
@@ -1515,14 +1527,16 @@ Disables IndicatorContainer log messages.
 EnableHighSpeedUpdates([updateOnFilledOrders], [guaranteeInterval])
 ```
 
-Enables high-speed script execution, running the script on every price tick instead of once per minute. With guaranteeInterval enabled, the script will execute at least once every 10 seconds even if no price ticks arrive.
+Enables high-speed script execution, running the script on every price tick instead of once per minute. With guaranteeInterval enabled, the script will execute at least once every 10 seconds even if no price ticks arrive (on TradeServer Cloud, see the next paragraph for the actual cadence).
+
+On TradeServer Cloud, high-speed updates arrive roughly every 10 to 16 seconds; do not rely on a fixed 10-second interval, and do not count updates to measure time. The engine logs "High speed updates enabled." Backtests ignore this command and still run the script once per minute.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `updateOnFilledOrders` | `boolean` | No | Executes an update right after an order has finished (canceled or filled). |
-| `guaranteeInterval` | `boolean` | No | Guarantees execution at least once every 10 seconds even if no price ticks arrive. |
+| `guaranteeInterval` | `boolean` | No | Guarantees execution at least once every 10 seconds even if no price ticks arrive. On TradeServer Cloud, do not rely on a fixed 10-second interval (see the description above). |
 
 **Returns:** `void`
 
@@ -1534,7 +1548,7 @@ Enables high-speed script execution, running the script on every price tick inst
 EnableOrderPersistence()
 ```
 
-Enables order persistence for managed trading.
+Enables order persistence for managed trading. Logs "Order persistence enabled." when compiled. It has no effect on unmanaged orders: a limit order cancelled by its timeout is not re-placed.
 
 **Returns:** `void`
 
@@ -1546,17 +1560,17 @@ Enables order persistence for managed trading.
 Finalize([callback])
 ```
 
-Only executes on the last update cycle of a backtest. Saving time in the overall backtest length. Can be used in combination with plot manipulation (eg. PlotDoubleColor()) or CustomReport()
+In a backtest it only executes on the last update cycle, saving time in the overall backtest length. In a live bot it executes on every update, after the main body. Can be used in combination with plot manipulation (eg. PlotDoubleColor()) or CustomReport(); do not reset state there that live logic depends on.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `callback` | `dynamic` | No | The function to executed when a candle closes. |
+| `callback` | `dynamic` | No | The function to execute. |
 
 **Returns:** `boolean`
 
-Returns true when executed.
+Returns true on the last update of a backtest, when the callback runs; `if Finalize() then ... end` can be used in the main body as a last-update check.
 
 ---
 
@@ -1591,7 +1605,9 @@ Gets the set leverage for current or specified market.
 
 **Returns:** `number`
 
-Returns the leverage value or -1 if request failed.
+Returns the leverage value or -1 if request failed. In a backtest this is the bot's leverage setting for the bot's own market, not the market maximum (see GetMaxLeverage()).
+
+In a backtest, for a market other than the bot's own whose leverage has never been set, returns that market's maximum leverage (`GetMaxLeverage(market)`), which is the leverage the backtest trades it at.
 
 ---
 
@@ -1612,7 +1628,7 @@ Gets the current margin mode for current or specified market.
 
 **Returns:** `enum`
 
-Returns the margin mode enum.
+Returns the margin mode enum: CrossMarginMode or IsolatedMarginMode.
 
 ---
 
@@ -1667,7 +1683,9 @@ Gets the current position mode for current or specified market.
 
 **Returns:** `enum`
 
-Returns the position mode enum.
+Returns the position mode enum: OneWayPositionMode or HedgePositionMode. Without arguments, the position mode set on the bot.
+
+The first argument is the account. A market passed as the only argument does not raise an error and does not select that market (the result equals `GetPositionMode()`); to query a market, use `GetPositionMode(AccountGuid(), market)`.
 
 ---
 
@@ -1782,7 +1800,7 @@ Executes and saves or loads a value depending on the timestamp and interval. Thi
 
 **Returns:** `dynamic`
 
-Returns the saved value or result of the callback.
+Returns every value the callback returned (several are supported). The callback runs on the first update, even in the middle of a candle, and then once per candle of the interval, on the update where a new candle starts; on all other updates the values of the last run are returned without running the callback. In a backtest, inside the callback `ClosePrices(interval)[1]` is the candle that just closed.
 
 ---
 
@@ -1816,7 +1834,7 @@ Disables the pause flag. Use in combination with IsBotPaused() to read the value
 SetLeverage(leverage, [market], [accountId])
 ```
 
-Sets the leverage ratio for current or specified market.
+Sets the leverage ratio for current or specified market. In a backtest the leverage setting applies only to the main market; other markets run at their maximum leverage unless set with this command.
 
 **Parameters:**
 
@@ -1829,6 +1847,10 @@ Sets the leverage ratio for current or specified market.
 **Returns:** `boolean`
 
 Returns true if successfully set value, otherwise false.
+
+In a backtest the value overrides the bot's leverage setting for the given market (the bot's own market by default) for the rest of the run; it does not carry over to the next backtest. Positions opened afterwards use the new leverage. Positions already open keep the leverage they were opened at, so `GetLeverage()` can then differ from the leverage of an open position. Call it for every non-primary market before trading it, and confirm with `GetLeverage(market)`.
+
+A backtest uses the leverage in the bot's settings, which can differ from the leverage of a live bot: a live bot on a simulated account whose script never calls `SetLeverage` trades at the market's maximum leverage. Call `SetLeverage` on the first update so that the backtest and the live bot use the same leverage, or check `GetLeverage()` before trading.
 
 ---
 

@@ -2,6 +2,8 @@
 
 198 enumerations across 17 categories.
 
+Compare a constant with `==` only against constants of the same category. Comparing constants from different categories (for example `BooleanType == BoolDataType`) is an engine error that fails the backtest and cannot be caught with `pcall`: "Invalid constant compare 'BooleanType vs BoolDataType'. Commands are from different categories."
+
 ## Categories
 
 - [Enumerations Array filter Types](#enumerations-array-filter-types) (4 commands)
@@ -1242,7 +1244,7 @@ Aqua
 Aqua([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Aqua, Aqua() or with a specific opacity Aqua(10).
+Enumeration, returns a color object (not a string). Can be used as Aqua or with a specific opacity Aqua(10). Do not call it with empty parentheses: Aqua() fails the script.
 
 **Parameters:**
 
@@ -1250,9 +1252,9 @@ Enumeration, returns a color hex string. Can be used as Aqua, Aqua() or with a s
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of aqua (#00FFFF)
+Returns the color aqua (#00FFFF) as a color object.
 
 ---
 
@@ -1263,7 +1265,7 @@ Black
 Black([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Black, Black() or with a specific opacity Black(10).
+Enumeration, returns a color object (not a string). Can be used as Black or with a specific opacity Black(10). Do not call it with empty parentheses: Black() fails the script.
 
 **Parameters:**
 
@@ -1271,9 +1273,9 @@ Enumeration, returns a color hex string. Can be used as Black, Black() or with a
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of black (#000000)
+Returns the color black (#000000) as a color object.
 
 ---
 
@@ -1284,7 +1286,7 @@ Blue
 Blue([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Blue, Blue() or with a specific opacity Blue(10).
+Enumeration, returns a color object (not a string). Can be used as Blue or with a specific opacity Blue(10). Do not call it with empty parentheses: Blue() fails the script.
 
 **Parameters:**
 
@@ -1292,9 +1294,9 @@ Enumeration, returns a color hex string. Can be used as Blue, Blue() or with a s
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of blue (#0000CC)
+Returns the color blue (#0000CC) as a color object.
 
 ---
 
@@ -1304,7 +1306,7 @@ Returns hex string of blue (#0000CC)
 Color(r, g, b, [a])
 ```
 
-Creates an RGBA color string.
+Creates an RGBA color object (not a string; it cannot be concatenated).
 
 **Parameters:**
 
@@ -1315,9 +1317,9 @@ Creates an RGBA color string.
 | `b` | `number` | Yes | The blue component value for the new color. Valid values are 0 through 255. |
 | `a` | `number` | No | The alpha component value for the new color. Valid values are 0 through 255. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns an RGBA color string.
+Returns an RGBA color object.
 
 ---
 
@@ -1328,7 +1330,7 @@ Cyan
 Cyan([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Cyan, Cyan() or with a specific opacity Cyan(10).
+Enumeration, returns a color object (not a string). Can be used as Cyan or with a specific opacity Cyan(10). Do not call it with empty parentheses: Cyan() fails the script.
 
 **Parameters:**
 
@@ -1336,9 +1338,9 @@ Enumeration, returns a color hex string. Can be used as Cyan, Cyan() or with a s
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of cyan (#00CCCC)
+Returns the color cyan (#00CCCC) as a color object.
 
 ---
 
@@ -1349,7 +1351,7 @@ DarkGray
 DarkGray([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as DarkGray, DarkGray() or with a specific opacity DarkGray(10).
+Enumeration, returns a color object (not a string). Can be used as DarkGray or with a specific opacity DarkGray(10). Do not call it with empty parentheses: DarkGray() fails the script.
 
 **Parameters:**
 
@@ -1357,9 +1359,9 @@ Enumeration, returns a color hex string. Can be used as DarkGray, DarkGray() or 
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of darkgray (#808080)
+Returns the color darkgray (#808080) as a color object.
 
 ---
 
@@ -1370,7 +1372,7 @@ DarkGreen
 DarkGreen([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as DarkGreen, DarkGreen() or with a specific opacity DarkGreen(10).
+Enumeration, returns a color object (not a string). Can be used as DarkGreen or with a specific opacity DarkGreen(10). Do not call it with empty parentheses: DarkGreen() fails the script.
 
 **Parameters:**
 
@@ -1378,9 +1380,9 @@ Enumeration, returns a color hex string. Can be used as DarkGreen, DarkGreen() o
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of darkgreen (#008000)
+Returns the color darkgreen (#008000) as a color object.
 
 ---
 
@@ -1391,7 +1393,7 @@ Fuchsia
 Fuchsia([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Fuchsia, Fuchsia() or with a specific opacity Fuchsia(10).
+Enumeration, returns a color object (not a string). Can be used as Fuchsia or with a specific opacity Fuchsia(10). Do not call it with empty parentheses: Fuchsia() fails the script.
 
 **Parameters:**
 
@@ -1399,9 +1401,9 @@ Enumeration, returns a color hex string. Can be used as Fuchsia, Fuchsia() or wi
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of fuchsia (#FF00FF)
+Returns the color fuchsia (#FF00FF) as a color object.
 
 ---
 
@@ -1412,7 +1414,7 @@ Gold
 Gold([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Gold, Gold() or with a specific opacity Gold(10).
+Enumeration, returns a color object (not a string). Can be used as Gold or with a specific opacity Gold(10). Do not call it with empty parentheses: Gold() fails the script.
 
 **Parameters:**
 
@@ -1420,9 +1422,9 @@ Enumeration, returns a color hex string. Can be used as Gold, Gold() or with a s
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of gold (#CC9900)
+Returns the color gold (#CC9900) as a color object.
 
 ---
 
@@ -1433,7 +1435,7 @@ Gray
 Gray([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Gray, Gray() or with a specific opacity Gray(10).
+Enumeration, returns a color object (not a string). Can be used as Gray or with a specific opacity Gray(10). Do not call it with empty parentheses: Gray() fails the script.
 
 **Parameters:**
 
@@ -1441,9 +1443,9 @@ Enumeration, returns a color hex string. Can be used as Gray, Gray() or with a s
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of gray (#C0C0C0)
+Returns the color gray (#C0C0C0) as a color object.
 
 ---
 
@@ -1454,7 +1456,7 @@ Green
 Green([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Green, Green() or with a specific opacity Green(10).
+Enumeration, returns a color object (not a string). Can be used as Green or with a specific opacity Green(10). Do not call it with empty parentheses: Green() fails the script.
 
 **Parameters:**
 
@@ -1462,9 +1464,9 @@ Enumeration, returns a color hex string. Can be used as Green, Green() or with a
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of green (#00FF00)
+Returns the color green (#00FF00) as a color object.
 
 ---
 
@@ -1475,7 +1477,7 @@ Maroon
 Maroon([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Maroon, Maroon() or with a specific opacity Maroon(10).
+Enumeration, returns a color object (not a string). Can be used as Maroon or with a specific opacity Maroon(10). Do not call it with empty parentheses: Maroon() fails the script.
 
 **Parameters:**
 
@@ -1483,9 +1485,9 @@ Enumeration, returns a color hex string. Can be used as Maroon, Maroon() or with
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of maroon (#800000)
+Returns the color maroon (#800000) as a color object.
 
 ---
 
@@ -1496,7 +1498,7 @@ Olive
 Olive([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Olive, Olive() or with a specific opacity Olive(10).
+Enumeration, returns a color object (not a string). Can be used as Olive or with a specific opacity Olive(10). Do not call it with empty parentheses: Olive() fails the script.
 
 **Parameters:**
 
@@ -1504,9 +1506,9 @@ Enumeration, returns a color hex string. Can be used as Olive, Olive() or with a
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of olive (#808000)
+Returns the color olive (#808000) as a color object.
 
 ---
 
@@ -1517,7 +1519,7 @@ Orange
 Orange([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Orange, Orange() or with a specific opacity Orange(10).
+Enumeration, returns a color object (not a string). Can be used as Orange or with a specific opacity Orange(10). Do not call it with empty parentheses: Orange() fails the script.
 
 **Parameters:**
 
@@ -1525,9 +1527,9 @@ Enumeration, returns a color hex string. Can be used as Orange, Orange() or with
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of orange (#FF8000)
+Returns the color orange (#FF8000) as a color object.
 
 ---
 
@@ -1538,7 +1540,7 @@ Purple
 Purple([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Purple, Purple() or with a specific opacity Purple(10).
+Enumeration, returns a color object (not a string). Can be used as Purple or with a specific opacity Purple(10). Do not call it with empty parentheses: Purple() fails the script.
 
 **Parameters:**
 
@@ -1546,9 +1548,9 @@ Enumeration, returns a color hex string. Can be used as Purple, Purple() or with
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of purple (#FF1a8c)
+Returns the color purple (#FF1a8c) as a color object.
 
 ---
 
@@ -1559,7 +1561,7 @@ Red
 Red([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Red, Red() or with a specific opacity Red(10).
+Enumeration, returns a color object (not a string). Can be used as Red or with a specific opacity Red(10). Do not call it with empty parentheses: Red() fails the script.
 
 **Parameters:**
 
@@ -1567,9 +1569,9 @@ Enumeration, returns a color hex string. Can be used as Red, Red() or with a spe
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of red (#FF0000)
+Returns the color red (#FF0000) as a color object.
 
 ---
 
@@ -1580,7 +1582,7 @@ SkyBlue
 SkyBlue([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as SkyBlue, SkyBlue() or with a specific opacity SkyBlue(10).
+Enumeration, returns a color object (not a string). Can be used as SkyBlue or with a specific opacity SkyBlue(10). Do not call it with empty parentheses: SkyBlue() fails the script.
 
 **Parameters:**
 
@@ -1588,9 +1590,9 @@ Enumeration, returns a color hex string. Can be used as SkyBlue, SkyBlue() or wi
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of skyblue (#33CCFF)
+Returns the color skyblue (#33CCFF) as a color object.
 
 ---
 
@@ -1601,7 +1603,7 @@ Teal
 Teal([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Teal, Teal() or with a specific opacity Teal(10).
+Enumeration, returns a color object (not a string). Can be used as Teal or with a specific opacity Teal(10). Do not call it with empty parentheses: Teal() fails the script.
 
 **Parameters:**
 
@@ -1609,9 +1611,9 @@ Enumeration, returns a color hex string. Can be used as Teal, Teal() or with a s
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of teal (#008080)
+Returns the color teal (#008080) as a color object.
 
 ---
 
@@ -1622,7 +1624,7 @@ White
 White([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as White, White() or with a specific opacity White(10).
+Enumeration, returns a color object (not a string). Can be used as White or with a specific opacity White(10). Do not call it with empty parentheses: White() fails the script.
 
 **Parameters:**
 
@@ -1630,9 +1632,9 @@ Enumeration, returns a color hex string. Can be used as White, White() or with a
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of white (#FFFFFF)
+Returns the color white (#FFFFFF) as a color object.
 
 ---
 
@@ -1643,7 +1645,7 @@ Yellow
 Yellow([opacity])
 ```
 
-Enumeration, returns a color hex string. Can be used as Yellow, Yellow() or with a specific opacity Yellow(10).
+Enumeration, returns a color object (not a string). Can be used as Yellow or with a specific opacity Yellow(10). Do not call it with empty parentheses: Yellow() fails the script.
 
 **Parameters:**
 
@@ -1651,9 +1653,9 @@ Enumeration, returns a color hex string. Can be used as Yellow, Yellow() or with
 |------|------|----------|-------------|
 | `opacity` | `number` | No | The color opacity, 0-100. By default 100. |
 
-**Returns:** `string`
+**Returns:** `dynamic`
 
-Returns hex string of yellow (#FFFF00)
+Returns the color yellow (#FFFF00) as a color object.
 
 ---
 
@@ -1690,7 +1692,7 @@ Constant value: a contract type enum for Quanto contracts (fixed multiplier, cro
 VanillaContract
 ```
 
-Constant value: a contract type enum for Vanilla contracts (linear, USDT-margined). Used by ContractType()
+Constant value: a contract type enum for Vanilla contracts (linear, USDT-margined). Note that ContractType() returns the number 2807 for such a contract, not this constant.
 
 **Type:** `enum`
 
@@ -1992,7 +1994,7 @@ Standard limit order type enum with a default timeout of 10 minutes. Used by Set
 MakerOrCancelOrderType
 ```
 
-MakerOrCancel order type enum with a standard timeout of 10 minutes. When the exchange does not support this type, a normal limit order will be executed. Used by SetOrderType() or PlaceOrders commands.
+MakerOrCancel order type enum with a standard timeout of 10 minutes. When the exchange does not support this type, a normal limit order will be executed. Used by SetOrderType() or PlaceOrders commands. Managed commands price it at the current best bid (buy) or best ask (sell), so it rests as a maker order. Backtests charge maker-or-cancel fills at the maker rate (`MakersFee()`). On simulated accounts, a maker-or-cancel order that would fill immediately is not rejected; it fills at the best price. Test maker-only logic in a backtest.
 
 **Type:** `enum`
 
@@ -2004,7 +2006,7 @@ MakerOrCancel order type enum with a standard timeout of 10 minutes. When the ex
 MarketOrderType
 ```
 
-Standard market order type. Used by SetOrderType() or PlaceOrders commands.
+Standard market order type. Used by SetOrderType() or PlaceOrders commands. Backtests charge market-type fills at the taker rate (`TakersFee()`).
 
 **Type:** `enum`
 
@@ -2091,7 +2093,7 @@ Constant representing the parameter. Used by DefineParameter() or DefineOutput()
 CallbackType
 ```
 
-Constant representing the parameter. Used by DefineParameter() or DefineOutput() for example.
+Constant representing the parameter. Used by DefineOutput() for example. Not accepted by DefineParameter().
 
 **Type:** `enum`
 
@@ -2253,6 +2255,20 @@ Constant representing the one-way position mode. Used with Get-/SetPositionMode(
 
 
 # Enumerations Signal
+
+Always compare signals against these constants, never against numbers. When a signal is read as a number (for example `ArrayGet` on an `IndicatorContainer` result, or `HNC(1, signal)[1]`) it shows its internal code:
+
+| Constant | Code |
+|----------|------|
+| `SignalLong` | 201 |
+| `SignalShort` | 202 |
+| `SignalExitPosition` | 203 |
+| `SignalNone` | 204 |
+| `SignalError` | 205 |
+| `SignalExitLong` | 206 |
+| `SignalExitShort` | 207 |
+| `SignalReservedA` | 208 |
+| `SignalReservedB` | 209 |
 
 ## SignalError
 

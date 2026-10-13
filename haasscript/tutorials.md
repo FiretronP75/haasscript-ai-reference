@@ -213,7 +213,7 @@ You can decide to add more easy indicators. If you want to do so then go to the 
 
 You can add Easy Insurances to a trade-bot to have a way to check the indicator signals. For example, suppose you never want to sell at a loss. Always overcoming the fee costs. Then you need to go to the "Commands" tab and open the "Easy Insurances" pane. Select the "OvercomeFeeCosts" and add this to your drawing. Go to the "Trade Pane" and add a "InsuranceContainer". Connect the orange dot of the "OvercomeFeeCosts" to the "InsuranceContainer" and connect the "InsuranceContainer" again to the "insuranceSignal" in the "TradeBotContainer".
 
-Once added the insurance will check the indicator signal and approve the trade of the indicator or dismiss the signals. Again, easy insurances check the easy indicator signals.
+Once added the insurance will check the indicator signal and approve the trade of the indicator or dismiss the signals. This includes exit signals: while the insurance is false, the indicator cannot close the position; only a safety can. Again, easy insurances check the easy indicator signals.
 
 ![Cryptocurrency trading platform UI with indicators, signals, insurances, and performance chart of a BTC/USDT trading bot.](/assets/insurances.png)
 
@@ -382,6 +382,8 @@ eth = ClosePrices({market = 'BINANCE_ETH_USDT_'})
 Plot(0, 'Binance ETHUSD', eth[1], {side=LeftAxis})
 ```
 
+`ClosePrices({market = ...})` uses a named-argument table: the keys are the parameter names of the command, so the leading optional parameters can be skipped.
+
 ### Double Price Plot
 
 Besides plotting a line on the left axis, we could also create a second candlestick chart and divide the screen in half.
@@ -410,7 +412,7 @@ With the input field command you can create dynamic input field for your script.
 
 #### Sorting
 
-Inputs fields are automatically sorted alphabetically. You can influence the sorting by numbering the input field.
+Input fields appear in the order they are created.
 
 #### Tooltip
 
@@ -418,9 +420,9 @@ An input name should always be short but clear. Sometimes you need more room to 
 
 #### Grouping
 
-Grouping input fields is a way to have clear sections in the menu. You can do this in two ways. The first, and easier way, is the group parameter which every input command has. This will group all the inputs with the same group name and add a group header above them. Input fields without a group will be grouped under Other Settings.
+Grouping input fields is a way to have clear sections in the menu. You can do this in two ways. The first, and easier way, is the group parameter which every input command has. This will group all the inputs with the same group name and add a group header above them. Input fields without a group that are created before the first InputGroupHeader() appear under Script Settings; later groupless inputs join the most recent header.
 
-The second grouping method only works in the script editor as used `InputGroupHeader()`. This will automatically group and sort all inputs defined after that, until a next `InputGroupHeader()` is used. Input fields above the first header are groped under Other Settings.
+The second grouping method only works in the script editor as used `InputGroupHeader()`. This will automatically group all inputs defined after that, until a next `InputGroupHeader()` is used. Input fields above the first header are grouped under Script Settings.
 
 ### Comment Inputs
 
@@ -572,11 +574,11 @@ highestValue = Max(highestValue, CurrentPrice().high)
 
 Info
 
-Notice that IfNull only works with global variables. If you define your variable as local and assign values to it using IfNull, you will get an error about unknown references.
+Notice that IfNull only preserves a value through a global variable. On a local it raises no error, but the local is nil again at the start of every update, so IfNull returns the default each time.
 
 #### Load & Save
 
-`Load` & `Save` work the same as `IfNull()` but with 2 commands. This set can be used in the normal scripts, but not in custom command scripts. Custom commands do not support `IfNull()` because global variables in custom commands are not allowed.
+`Load` & `Save` work the same as `IfNull()` but with 2 commands. This set can be used in normal scripts and in custom command scripts; in custom commands it is the only way to keep a value between calls. Custom commands do not support `IfNull()` because global variables in custom commands are not allowed.
 
 ```
 -- Initialize value as local
@@ -698,7 +700,7 @@ Will return true when the bot as any open order active. Can be used to skip or e
 
 Will be true if the engine has received a finished order between the last and current update cycle. The order can be rejected, cancelled, partially filled or filled order. Basically everything not active on the exchange. The command can be used to skip parts of the script that handles orders of that kind.
 
-**CancelOrders**
+**CancelAllOrders**
 
 Requests to cancel all the current open orders once the script is executed.
 
@@ -750,7 +752,7 @@ isOpen = order[4]
 
 Returns all the current open orders associated with the bot. The items in the collection are the same as the result of OrderContainer.
 
-#### GetAllFinishedOrders
+#### GetAllFilledOrders
 
 Returns a collection of the last 50 (partially) filled orders. The items in the collection are the same as the result of OrderContainer.
 

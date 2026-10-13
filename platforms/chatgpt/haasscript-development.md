@@ -68,7 +68,7 @@ Use semantic version names such as `Strategy-v2.1.0-stop-fix`.
 
 ## 6. Lint checklist
 
-Critical: - arrays start at 1 - no `math.*` - top-level Inputs - Lab
+Critical: - arrays start at 1 - prefer HaasScript math to `math.*` - top-level Inputs - Lab
 booleans are `1/0` - every persistent key is loaded with a default and
 saved on intended paths - historical lookbacks use correct offsets -
 position/order guards prevent duplicate managed actions - uncertain

@@ -24,16 +24,24 @@ HaasScript is a Lua-based scripting language that enables you to create custom t
 
 The primary data type for numeric operations in HaasScript. Represents both single numbers and arrays of numbers (time series data).
 
+Indicator price inputs typed HaasNumberCollection also accept a plain Lua table of numbers (newest first), with identical results; the output is always a HaasNumberCollection. No conversion is needed.
+
 ```lua
 local prices = ClosePrices()  -- Returns HaasNumberCollection
 local rsi = RSI(prices, 14)   -- Returns HaasNumberCollection
 
--- Access first value
-local currentRsi = rsi.Value
+-- Newest value as a plain number (index 1 = newest)
+local currentRsi = ArrayGet(rsi, 1)
 
--- Access array of values
-local rsiHistory = rsi.Values
+-- The series itself holds the history; rsi[2] is the series from the previous bar onward
+local rsiHistory = rsi
 ```
+
+Indexing a `HaasNumberCollection` with brackets (`close[3]`, with a literal or a variable alike) returns the sub-series that starts at that index, not a single number: on a 500-element window `close[3]` has 498 elements. In comparisons and string concatenation a series acts as its newest element, so `close[3] > x` uses element 3; in arithmetic it stays element-wise (`close[3] * 2` is a 498-element series). Use `ArrayGet(series, i)` (alias of `ArrayIndex`) to get element i as a plain number.
+
+Lua operators work on a `HaasNumberCollection`: arithmetic is element-wise and returns a series (`(close + open) / 2` has 500 elements; mixed lengths truncate to the shorter, so `ATR(...) / close * 100` has the length of the ATR series); comparisons (`<`, `>`, `==`) use the newest element of each side, so `==` between two series compares values, not identity. Plain Lua tables still raise an error with operators.
+
+Assigning with brackets inserts rather than overwrites: after `h = HNC(3, 7); h[1] = 5`, `h` is 5, 7, 7, 7 (4 elements). No error is raised.
 
 **HaasSignal**
 
@@ -48,6 +56,16 @@ Enumeration type for constants (MA types, signal types, order types, etc.).
 - `number` - Lua number (floating point)
 - `string` - Text data
 - `boolean` - true/false values
+
+**Number-or-array parameters**
+
+Parameters typed `number|table` (or `NumberOrTableParams`) accept a number, a `HaasNumberCollection` or a Lua table of numbers:
+
+- Given a series or a table, the command works element-wise and returns a series. Two series of different lengths are aligned on the newest element (index 1) and truncated to the shorter one.
+- Given a number, it is treated as a 1-element series.
+- A series passed to a parameter typed plain `number` (an indicator period, `Round` digits, a threshold) is silently reduced to its newest element; no error is raised.
+- Commands that return a boolean (`IsBiggerThan`, `CrossOver`, ...) read only the newest element(s) of their inputs.
+- Lua tables work as series inside commands (`Add({1, 2, 3}, 1)`), but not with Lua operators (`{1, 2, 3} * 2` raises an error).
 
 ## Execution Model
 
@@ -77,9 +95,9 @@ local period = Input("period", 14)  -- Initialization
 local prices = ClosePrices()         -- Update phase
 local rsi = RSI(prices, period)
 
-if rsi.Value < 30 then
+if rsi < 30 then      -- comparisons use the newest value
     DoLong()  -- Buy signal
-elseif rsi.Value > 70 then
+elseif rsi > 70 then
     DoShort()  -- Sell signal
 end
 ```
@@ -103,8 +121,8 @@ local rsi = RSI(ClosePrices(), 14)
 
 -- MACD
 local macd = MACD(ClosePrices(), 12, 26, 9)
-local macdValue = macd.Value
-local signalLine = macd.Signal
+local macdValue = macd.macd      -- container fields are lowercase
+local signalLine = macd.signal
 
 -- Moving Averages
 local sma = SMA(ClosePrices(), 20)
@@ -137,9 +155,9 @@ TrailingStopLoss(3.0)  -- 3% trailing stop
 ```lua
 local prices = ClosePrices()
 
--- Get specific index (0 = most recent)
-local currentPrice = ArrayIndex(prices, 0)
-local previousPrice = ArrayIndex(prices, 1)
+-- Get specific index (1 = most recent)
+local currentPrice = ArrayIndex(prices, 1)
+local previousPrice = ArrayIndex(prices, 2)
 
 -- Filter
 local highPrices = FilterAbove(prices, 100)
@@ -149,7 +167,7 @@ local highPrices = FilterAbove(prices, 100)
 
 ```lua
 -- Save values between executions
-Save("myKey", rsi.Value)
+Save("myKey", ArrayGet(rsi, 1))
 local previousRsi = Load("myKey")
 ```
 

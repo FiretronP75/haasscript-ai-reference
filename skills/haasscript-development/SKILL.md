@@ -38,18 +38,30 @@ every one of them before you debug anything else.
    *final* close, and `GetVolume()[1]` carries the forming bar's *complete* volume from
    minute 0. Use `[2]` — the last closed bar — for anything causal. Verified twice
    (volume 2026-07-26, price 2026-08-02).
+   **In backtests and on simulated accounts this differs:** there `ClosePrices()[1]` (and
+   the high, low and volume series) is the last CLOSED chart-interval candle. It stays
+   fixed for every tick of the forming bar and changes on the boundary tick, so `[1]` is
+   causal and `[2]` lags one bar. On live exchange accounts `[1]` may be the forming
+   candle; keep `[2]` there.
 3. **`settings.orderTemplate` must be 500.** Omit it and the engine crashes at the first
    order that consults the template. Status still reads S=3 / P=100 with PT=0 — it looks
    like a clean zero-trade run unless you read the logs.
 4. **`Finalize()` runs ONCE at the end of a backtest but EVERY TICK in a live bot.**
    Any state reset inside `Finalize` is harmless in a backtest and wipes your live bot's
    state 60 times an hour. Finalize reports; it resets nothing live logic depends on.
-5. **Loop-variable indexing returns userdata.** `closes[i]` where `i` is a `for` variable
-   yields a wrapper that will not do arithmetic. Launder it (§7.3) or use element-wise
-   array algebra (§7.4).
-6. **Save/Load state persists across backtest runs** on the same script, and `Save()` is
-   deferred *within* a tick (a later `Load()` in the same tick returns the tick-start
-   snapshot). Reset on a fresh-run guard, not in `Finalize`.
+5. **Bracket indexing returns a sub-array, not a number.** `closes[i]` (loop variable or
+   literal) is the series from element `i` onward: arithmetic on it is element-wise and
+   returns a series; comparisons and `..` use its newest element. Use `ArrayGet(closes, i)`
+   for a plain number, or launder (§7.3).
+6. **Save/Load state** [BUILD]. On TradeServer Cloud each backtest starts with empty
+   Save/Load storage, so nothing carries over from an earlier run. Within a tick `Save()`
+   and `Delete()` take effect at once: a later `Load()` returns the new value and the last
+   write wins. Never reset live state in `Finalize` (§0.4).
+   Live: stopping and restarting a bot keeps its global variables and Save/Load values,
+   and an input changed while stopped applies on restart. An edit to the script does not
+   reach a running bot; reloading the edited script into the bot clears its globals and
+   saved values. A cloned bot copies the script and settings but starts with empty
+   globals and saved values. Code an explicit reset if a restart must start fresh.
 
 ---
 
@@ -61,11 +73,11 @@ first; only ask what you cannot infer.
 
 | Question | Why it matters |
 |---|---|
-| Spot or futures/margin? | Different order commands; `DoShort` is a **no-op on spot** |
+| Spot or futures/margin? | Different order commands; on spot, `DoShort` **only exits** (it sells a long position; with no position it is blocked) |
 | Managed or unmanaged? | They **cannot be mixed** — one leftover managed call is a compile error |
 | Entry trigger? | Indicators, levels, time, structure |
 | Exit geometry: TP / SL / trailing / time? | Never skip. Exit geometry dominates entry quality in every measured comparison |
-| Swept in Labs later? | All sweepable `Input()` booleans need `1`/`0` defaults |
+| Swept in Labs later? | Give sweepable booleans `1`/`0` defaults so `flag == 1` works |
 | New script or modify existing? | Existing → clone a named backup first |
 | Custom report metrics? | Plan `CustomReport()` upfront — and see the counter caveat in §3 |
 | Will it be tuned from evidence? | If yes, add the decision-edge capture block now (**haasscript-export-instrumentation** skill) |
@@ -136,8 +148,10 @@ Finalize(function()
 end)
 ```
 
-**Fresh-run detection** (replaces resetting state in `Finalize`): a new backtest starts
-*before* the last saved tick's timestamp; live time never reverses.
+**Fresh-run detection** [BUILD] (replaces resetting state in `Finalize`): on TradeServer
+Cloud each backtest starts with empty Save/Load storage, so this guard never fires there and
+is not needed. On builds where state persists between runs, a new backtest starts *before*
+the last saved tick's timestamp; live time never reverses.
 
 ```lua
 local prevTs = lau(Load("prevTs", 0))
@@ -163,49 +177,70 @@ during warmup.
       `#ClosePrices() ~= Load("prevCount")` fires once at activation and never again.
       Use `Floor(Time() / barSecs)`.
 - [ ] **Causal data uses `[2]`.** `[1]` is the forming bar with its final close and full
-      volume already visible.
-- [ ] **Boolean `Input()` defaults are `1`/`0`.** `true`/`false` breaks Lab sweeps with
-      "Cannot parse '1' to a boolean value". `InputOptions()` returns a STRING — keep
-      swept parameters numeric.
-- [ ] **All `Input()` calls at top level, above anything that can throw.** Inputs register
-      as each line executes on the init tick; an earlier runtime crash silently aborts
-      registration of every later input. Inputs inside `if` branches get only a
-      static-scan fallback key.
+      volume already visible. In backtests and on simulated accounts `[1]` is already the
+      last closed bar, so `[2]` lags one bar there (§0.2).
+- [ ] **Boolean `Input()` defaults are `1`/`0`.** A `true`/`false` input stays a Lua
+      boolean even when a Lab sets it to 1, so `flag == 1` is false (on TradeServer Cloud
+      Labs sweep true/false inputs without error) [BUILD]. `InputOptions()` returns a
+      STRING — keep swept parameters numeric.
+- [ ] **All `Input()` calls at top level, above anything that can throw** (good practice).
+      Inputs are registered when the script compiles, from a scan of the source, before any
+      tick runs, so a runtime error does not drop later inputs. An `Input` inside an `if`
+      branch that never runs is registered under a `static-scan.<label>` fallback key.
 - [ ] **Array indexing starts at `1`.** Index 0 throws.
 - [ ] **Every `Load()` key has a matching `Save()`.** Mismatched keys silently return the
       default forever.
 - [ ] **`Finalize` resets nothing that live logic depends on** (it runs every tick live).
 - [ ] **Managed XOR unmanaged.** Never both — a leftover `if dummy then DoLong(...) end`
-      is enough to trip "Both managed and unmanaged trading commands detected".
+      is enough to trip "Both managed and unmanaged trading commands detected". So is a bare
+      reference (`local f = DoLong`, never called) and `TradeBotContainer`. Comments and
+      string literals do not count. `CreatePosition`, `GetAllOpenOrders`, `GetAllFilledOrders`
+      and `PositionContainer` are allowed in managed scripts.
 - [ ] **Unmanaged order calls are PRICE-FIRST.** `PlaceBuyOrder(price, amount)`,
-      `PlaceGoLongOrder(price, amount)`. The `(amount, price)` form **places nothing**:
-      0 orders, 0 fills, empty FailedOrders.
+      `PlaceGoLongOrder(price, amount)`. Swapped arguments are not reliably rejected: some
+      `(amount, price)` calls are blocked with a warning, others place an order at the
+      swapped values. Always pass `(price, amount)` or use the options table.
 
 ### 🟡 Type-system class
 
-- [ ] **No `math.*`.** Not available. Use `Abs`, `Round`, `Max`, `Min`, `Floor`, `Ceil`,
-      `Sqrt`, `Ln`, `Atan`.
+- [ ] **Prefer HaasScript math to `math.*`** [BUILD]. `math.*` is available on TradeServer
+      Cloud (`math.floor`, `math.max`, `math.sqrt`, `math.pi`) but missing on some builds.
+      `Abs`, `Round`, `Max`, `Min`, `Floor`, `Ceil`, `Sqrt`, `Ln`, `Atan` work everywhere
+      and also work element-wise on series.
 - [ ] **`Round(x, digits)` takes TWO args.** The 1-arg form crashes with
       "Invalid input count of 1". `Round()` on a **bool hard-errors and is NOT
       pcall-catchable** — test `== true` first.
-- [ ] **`Sqrt(x)`, never `x ^ 0.5`.** `^` crashes on bridge-derived values.
-- [ ] **`Ln()` bounds-guarded** — throws "too large or too small for a Decimal" near 0 or
-      on huge/NaN input.
-- [ ] **Collection scalars coerced.** `arr[1]` is not automatically a clean number —
-      `+ 0` for simple cases, `lau()` for anything feeding recursion or a multiply.
-- [ ] **No loop-variable indexing arithmetic.** `closes[i]` with a `for` variable returns
-      userdata. Launder, or use element-wise array ops (§7.4).
-- [ ] **Loop bounds are literals, `Input()` values, or `#collection`.** `Min()`, `Max()`,
-      `Floor()` and numeric `Load()` returns are userdata and are **rejected as `for`
-      limits** ("'for' limit must be a number"); `+ 0` does not fix it. A userdata control
+- [ ] **`Sqrt(x)` / `Pow(x, n)`, never `x ^ n` on engine values.** `^` raises "attempt to
+      perform arithmetic on a userdata value" on any engine result, scalars such as
+      `Floor(3.7)` included (an ordinary Lua error); `+ - * /` work. Launder first for `^`.
+- [ ] **`Ln()` input must be positive and not tiny.** A negative input aborts the script,
+      even inside `pcall` ("Value was either too large or too small for a Decimal", then
+      "Ln(): Execution error occurred."). `Ln(0)` and tiny inputs such as `Ln(1e-30)`
+      return 0 with no error, a silently wrong value.
+- [ ] **Collection scalars coerced.** `arr[1]` is not a plain number, and `+ 0` does not
+      make it one (`close[1] + 0` is still a series). Use `ArrayGet(arr, 1)` or `lau()`.
+- [ ] **Read scalars with `ArrayGet`.** `closes[i]` returns a sub-array, so `closes[i] * 2`
+      is a whole series, not a number. Use `ArrayGet(closes, i)`, launder, or element-wise
+      array ops (§7.4).
+- [ ] **Loop bounds are literals, `Input()` values, or `#collection`.** `Min()`, `Max()` and
+      `Floor()` results (and a `Load()` of a saved series) are userdata and are
+      **rejected as `for` limits** ("'for' limit must be a number"); a plain number
+      restored by `Load()` works. `+ 0` does not fix it. A userdata control
       variable also makes `string.format` throw, which kills string-keyed tables.
-- [ ] **`type()` is unregistered** [BUILD]. Use `pcall` guards, `nil` checks and `#`.
-- [ ] **`tostring()` — avoid.** Fine on HTSLocal; the **live HTSv3 editor rejects it**.
-      Use implicit `..` coercion. Note `..` binds looser than `+ -`.
-- [ ] **Never string-coerce a whole collection.** It dumps the entire series into the log
-      or order note and trips the >5000-char warning.
-- [ ] **Never `Save()` a container.** `Save(CurrentPrice())` crashes the run.
-      `Save(nil)` throws.
+- [ ] **The compiler rejects `type`, `print`, `error`, `select`, `unpack`, `xpcall` and
+      `bit32`** [BUILD] ("Unknown references"), although they exist at runtime. Use
+      `pcall` guards, `nil` checks and `#` instead of `type()`, and `Log()` instead of
+      `print()`.
+- [ ] **`tostring()`** [BUILD]. Works on HTSLocal and in the TradeServer Cloud Web Editor
+      (`tostring(1.5)` = "1.5"); some builds have rejected it. Implicit `..` coercion works
+      everywhere. Note `..` binds looser than `+ -`.
+- [ ] **Concatenating a collection gives its newest element only** (`"c=" .. close` is one
+      value). `Log(series)` on its own prints the whole series; log values, not series.
+- [ ] **Never `Save()` a container.** `Save(k, CurrentPrice())` saves nothing, logs
+      "Save(): Cannot save a container" and marks the backtest failed, while the script
+      keeps running and `pcall` sees no error. Save plain fields such as `.close`.
+      `Save(key, nil)` aborts the run and `pcall` cannot catch it; clear keys with `Delete(key)`.
+- [ ] **`Save(close[2])` saves the whole slice**, not one number — use `ArrayGet(close, 2)`.
 - [ ] **Decimal precision:** `Round(x, 8)` after every divide; launder every value feeding
       a recursion or an accumulator (§7.3).
 
@@ -257,7 +292,8 @@ The tool names are `add_script`, `compile_script`, `edit_script_source`,
 }
 ```
 
-- **`orderTemplate: 500` is mandatory** (§0.3).
+- **`orderTemplate: 500` is mandatory** (§0.3). The value is the bot's order type:
+  500 = Limit (the default), 503 = Maker-or-cancel; a market order carries 501.
 - **`backtest_id` has a minimum length** — short ids fail with a misleading
   "Invalid backtestId". Use ~15+ descriptive characters.
 - **One backtest per script at a time** — "Cannot execute multiple backtests of the same
@@ -273,6 +309,18 @@ Per-backtest `Input()` overrides work through `settings.scriptParameters`, keyed
 sits in the source — adding, removing or reordering any Input above it shifts every
 subsequent key. Re-read `CR.I` after any script edit; never hardcode a key across versions.
 
+The key is `<startLine>-<endLine>-<startColumn>-<endColumn>.<label>`: the line and column
+span of the `Input` token plus the label, so any edit that moves the call changes it (a
+line inserted above, or re-indenting). In the Web Editor, a saved value whose key no
+longer exists is matched by label and applied ("Input '<label>' matched by name ... Value
+applied."), so moving or re-indenting an input keeps its value. Renaming the label resets
+it to the default ("matches no registered input (by key or by name) — NOT applied"), and
+duplicate labels reset both. A "matches no registered input" warning printed before
+"Compiling script..." refers to keys that are not yet registered and can be ignored for
+current keys. Saved values belong to the saved script: pasting a different strategy into
+an existing script gives its inputs the old values wherever the labels match, so create a
+new script to start clean.
+
 **Always verify the override applied**: `get_backtest_runtime` → `InputFields[<key>].V`
 versus `.D`. An unrecognised settings key is silently ignored and the run proceeds at
 defaults. Best practice: echo the value into the export and check it there.
@@ -285,23 +333,43 @@ defaults. Best practice: echo the value into the export and check it there.
   never from compile output.**
 - Guard the activation pass in code: `if atr[2] <= 0 then return end` or
   `if c2 == 100 then return end`.
-- The lenient API-level compile check **tolerates `tostring`** while the live HTSv3 editor
-  rejects it. Grep for `tostring` and `math.*` regardless of what the compiler says.
+- The compile test is the activation pass: it runs before "Compile test OK" is logged. On
+  it `Time()` is the backtest start, `Input()` returns the values set in the panel, and
+  `Save()` calls are discarded — the first real update finds no saved keys.
+- A live bot's start (and `add_script`) also runs this pass once before the first update.
+  Anything it saves is discarded, but live market commands (e.g. `GetLastTrades`) already
+  return real data on it, so the synthetic-close guard is the reliable marker.
+- The API-level compile check **tolerates `tostring` and `math.*`**. Both also work in the
+  TradeServer Cloud Web Editor; on other builds, check them in the editor you deploy from.
 - Signature errors surface at **runtime**, not compile. An invented positional order form
-  is valid Lua and compiles, then throws "Argument out of range" at order-build time.
+  is valid Lua and compiles; at order-build time it can throw "Argument out of range", and
+  a number in the market or order-type slot is not rejected at all (see the positional-form
+  trap in Phase 8).
+- Lua runtime errors report their position as `chunk_0:(<line>,<startColumn>-<endColumn>)`,
+  where `<line>` is the line in the script. They are ordinary Lua errors and `pcall`
+  catches them; when caught, the run continues normally.
 
 ### Compile error → fix
 
 | Error | Cause | Fix |
 |---|---|---|
-| `Cannot parse '1' to a boolean value` | `Input()` boolean default is `true`/`false` | Use `1`/`0` |
-| `'for' limit must be a number` | Loop bound from `Min`/`Max`/`Floor`/`Load` | Literal / `Input()` / `#collection` bound |
-| `attempt to perform arithmetic on a userdata value` | `closes[i]` with a loop variable | Launder (§7.3) or element-wise ops (§7.4) |
-| `Value was either too large or too small for a Decimal` | Mantissa-precision overflow in a recursion or multiply | Launder to doubles; `Round(x,8)` after divides |
-| `Invalid input count of 1` | `Round(x)` with one arg | `Round(x, digits)` |
-| `Both managed and unmanaged trading commands detected` | A stray `DoLong`/`DoExitPosition` in an unmanaged script | Remove it |
-| `Unknown references: <name>` | Command not registered on this build | Probe alternatives; see §8 |
+| `'for' limit must be a number` | Loop bound from `Min`/`Max`/`Floor` / a `Load()` of a saved series | Literal / `Input()` / `#collection` bound |
+| `attempt to perform arithmetic on a userdata value` | `^` on an engine value (for example `close[1] ^ 2`) | `Pow(x, n)` / `Sqrt(x)`, or launder first (§7.3) |
+| `Value was either too large or too small for a Decimal` | A value outside the engine's Decimal range — from a recursion, or from plain magnitude (`Mul(1e20, 1e20)` is enough). Not catchable by `pcall`; the backtest fails | Keep engine values far from that range; launder to doubles; `Round(x,8)` after divides |
+| `Invalid input count of N (requires M inputs)` / `Unable to cast <value> to a numeric value` / `Something went wrong parsing the parameter '<name>'` | Wrong argument count or type, for example `Round(x)`, `Round(true, 2)`, `PlotBars(1, "label", value)`. Checked at runtime only; not catchable by `pcall` | Match the command's parameter table; `Round(x, digits)` |
+| `Both managed and unmanaged trading commands detected` | Any managed identifier — a call, a bare reference, or `TradeBotContainer` — in an unmanaged script, even in dead code. Comments and strings do not count | Remove it |
+| `Unknown references: <name>, <name>, ...` | A name the compiler cannot resolve: a command not registered on the server, a misspelled or undeclared variable, or a field read by bare name from a function inside the same table literal. One error lists every unknown name in the script, wherever it appears (table literals, function bodies, `pcall` closures) | Try alternatives (see §8); declare the variable; read table fields through the table variable |
+| `chunk_0:(<line>,<startColumn>-<endColumn>): attempt to call a nil value` | A name that does not exist at runtime was called (Lua runtime error; `<line>` is the script's own line) | An ordinary Lua error: `pcall` catches it. Check that the command name exists on the server |
+| `Argument out of range exception.` then `Backtest has failed` | An index past the end of a series (or computed index 0); not catchable with `pcall` | Check `#series` before indexing; test emptiness with `#series == 0` |
+| `This script is only compatible with spot trading.` | Informational: the script's unmanaged orders use spot commands such as `PlaceBuyOrder` | None needed on spot; use the leverage commands for leverage markets |
+| `This script is compatible with margin and leverage trading.` | Informational: the script uses unmanaged position commands (`PlaceGoLongOrder`, `PlaceGoShortOrder`, `PlaceExitPositionOrder`) | None needed |
+| `WARNING: No order handling command detected. Use the command in the Order Handling category to check for open, cancel or filled orders.` | Warning for an unmanaged script without order-handling commands (`IsOrderOpen`, `CancelOrder`, `GetAllFilledOrders`, …) | Add `IsOrderOpen` / `IsOrderFilled` / `CancelOrder` handling; harmless in a test script |
+| `WARNING: This script can not be used for trading. No trading command detected.` | No trading command anywhere in the source | Expected for read-only scripts |
 | Compiles, zero trades | Config or gating | Phase 5 |
+
+The trading-compatibility check reads the source, not the run: a trading command inside a
+branch that never executes (for example `if false then PlaceGoLongOrder(0, 0) end`) still
+marks the script as tradable for that market type.
 
 ---
 
@@ -336,18 +404,27 @@ falsely implicates the crashing scripts. Diagnose by comparing
 ### Tier 2 — Script logic
 
 - **No new-bar gate, or a broken one** (`#ClosePrices()` bar-count gate → fires once).
-- **Trade size below the exchange minimum** — silently rejected every tick with nothing
-  surfaced. Check with `IsTradeAmountEnough` and log rejections.
-- **Leverage**: futures accounts default very high (125–150×). Pass `leverage` explicitly.
+- **Trade size below the exchange minimum** — blocked every tick with logged warnings
+  ("IsTradeAmountEnough(): ... below the minimum trade volume", "Blocking PlaceBuyOrder()"),
+  also in backtests; the `Place*` call returns "". Check `IsTradeAmountEnough` /
+  `MinimumTradeAmount(market, price)` first (the minimum is evaluated at the order price).
+- **Leverage**: a live bot on a simulated account that never sets leverage trades at the
+  market's maximum (125–150× on major perps), while a backtest uses the leverage in its
+  settings (default 1× in the Web Editor). Pass `leverage` explicitly and call `SetLeverage` so both match.
   Note the backtest `leverage` setting does **not** propagate to non-primary markets in
-  multi-market scripts — those use the account's per-market default.
-- **Order args reversed** — `(amount, price)` places nothing, silently.
+  multi-market scripts — those run at the market's MAXIMUM leverage (150× on a Bybit USDT
+  perpetual) unless the script calls `SetLeverage(n, market)` for each secondary market.
+- **Order args reversed** — swapped arguments are not reliably rejected: some `(amount, price)`
+  calls are blocked with a warning, others place an order at the swapped values. Always pass
+  `(price, amount)` or use the options table.
 - **Plain limit at the close does not fill** — the close can sit below the ask after a
-  bounce. Use `{type = MarketOrderType}` or price it marketable (`close * 1.02` to buy).
+  bounce. Use `{type = MarketOrderType}`. Pricing marketable (`close * 1.02` to buy) works
+  only with a plain limit order type: if the bot's Order type is maker-or-cancel, an order
+  priced through the market is rejected ("Order would immediately execute").
 - **Position guard wedged** — `not IsAnyOrderOpen()` never clears if an order is stuck.
 - **`GetPositionDirection()` compared to raw numerics** — `0`/`-1`/`1` never match the
   enum. Compare to `NoPosition` / `PositionLong` / `PositionShort`.
-- **Spot `DoShort` is a no-op** — logic waiting for a short position to appear will wedge.
+- **Spot `DoShort` only exits** — with no position it is blocked ("Blocking sell. Bot has not bought yet."); while long it sells the position. Logic waiting for a short position to appear will wedge.
 - **Managed-spot fee dust**: spot fees are charged in the base asset, so `DoExitPosition`
   sells slightly less than was bought and leaves ~1e-5 dust. The engine keeps the position
   "open", so `posDir == NoPosition` entry gating freezes the bot after one round trip.
@@ -360,8 +437,10 @@ Log("c2=" .. Round(c2, 2) .. " ema2=" .. Round(ema2, 2)
     .. " newBar=" .. (isNewBar and 1 or 0), Orange)
 ```
 
-No `tostring()`; no whole-collection concatenation. Note that on a crash `Log()` flushes
-reliably only to a *region* — the throw swallows the last unflushed chunk. For an exact
+Implicit `..` coercion works everywhere; `tostring()` works on TradeServer Cloud [BUILD].
+Concatenating a collection gives only its newest element; log values, not series. Note
+that on a crash `Log()` flushes reliably only to a *region* — the throw swallows the last
+unflushed chunk. For an exact
 bisect, use an early-exit probe (`do return end`) on the suspect bar rather than trusting
 the last log line.
 
@@ -390,7 +469,7 @@ into a sweepable Lab dimension.
 **A fix that changes nothing means nothing was broken.** If a "bug fix" produces a
 bit-identical run, the bug was not there — go find the real cause instead of banking the fix.
 
-**Live bots do not hot-reload.** Deactivate and reactivate to pick up a recompiled script.
+**Live bots do not hot-reload.** To pick up an edited script, stop the bot, reload the script into it, and start it again; the reload clears its globals and saved values (§0 item 6).
 Bot-level Input overrides persist across script edits — changing a source default does not
 change a configured bot.
 
@@ -417,10 +496,14 @@ local cl, vc = ClosePrices(), GetVolume()
 local c2 = lau(cl[2])    -- last CLOSED bar
 local v2 = lau(vc[2])    -- its complete volume
 -- cl[1] / vc[1] = the forming bar, already carrying its final values = LOOKAHEAD
+-- In backtests and on simulated accounts cl[1] / vc[1] is already the last closed bar,
+-- so [2] is one bar older there (§0.2).
 ```
 
 Anchor price-based TP/SL on the **live fill price** (`ClosePrices()[1]` at the confirmation
-tick), not the stale closed bar — a gap between the two causes instant stop-outs.
+tick), not the stale closed bar — a gap between the two causes instant stop-outs. In
+backtests and on simulated accounts `ClosePrices()[1]` is the last closed bar and stays
+fixed for the whole forming bar, so it is not a live price there.
 
 ### 7.3 Double-domain launder
 
@@ -437,10 +520,16 @@ local function lau(v)
 end
 ```
 
-Launder every price container, `Input()`, indicator scalar and numeric `Load()` return
+Launder every price container, indicator scalar and `Load()` of a saved engine value
 once per tick into plain tables, then do all downstream arithmetic on doubles. Magnitude
 clamps, `Round(x,8)` alone, and add/subtract laundering do **not** clear the taint;
-Save/Load round-trips preserve it.
+saving an engine value and loading it back preserves it. A number saved as a plain number
+is loaded as a plain Lua number.
+
+`Input()` values with a numeric default are plain Lua numbers and need no laundering.
+Engine series, math-helper results, signal constants and colors are userdata. Comparing
+them with a Lua number using `==` works: `Input("Flag", 1) == 1`, `Load("never-saved", 1) == 1`
+and `Floor(1.2) == 1` are all true (a series compares by its newest element).
 
 ### 7.4 Element-wise array algebra — prefer this over loops
 
@@ -464,7 +553,7 @@ scalar form (delta 0.000000000):
 local chg     = Abs(Change(cl))                    -- |dclose| series
 local pathSer = Mul(SMA(chg, 20), 20)              -- rolling 20-sum
 local netSer  = Abs(Sub(cl, Offset(cl, 20)))       -- |close - close[20]|
-local kerSer  = Div(netSer, pathSer)               -- KER series, [2] = causal
+local kerSer  = Div(netSer, pathSer)               -- KER series, [2] = causal (§0.2)
 -- scalar equivalent: ArraySum(Grab(chg, 1, 20)) skips the forming bar and spans cl[2]..cl[22]
 ```
 
@@ -484,6 +573,13 @@ compile-test). Consequences:
   On a market whose data begins recently, leave ~7 days before the start.
 - Anything needing more than ~498 bars since an anchor (e.g. a month-anchored accumulator
   on 15m or 1h) does not fit — move to a higher timeframe or accumulate statefully.
+- **Indicator output is shorter than its input.** `SMA`/`EMA` return count − period + 1
+  values and `RSI`/`ATR` return count − period: on the 500-bar window `SMA(close, 200)`
+  has 301 values and `RSI(close, 14)` has 486. Check `#result` before indexing deep into
+  an indicator.
+- **Input shorter than the period gives a placeholder, not an error or nil.** `RSI` and
+  `SMA` on 10 values with a period of 14 or 20 return `1, 1, 1`. Check `#input >= period`
+  before trusting the result.
 
 ### 7.6 Unmanaged single-pair state machine
 
@@ -498,8 +594,9 @@ New-bar gate the decisions; run fill and exit checks every tick.
   an empty id; persisting `""` with a direction set creates a zombie slot that wedges
   side-counting logic forever. On failure keep the slot in a retry state with backoff.
 - **Native `StopLoss(pct)` / `TakeProfit(pct)` / `TrailingStopLoss(pct)` return BOOL** —
-  they are **detectors, not executors**. They latch true and re-fire every tick once
-  breached; gate the close on an already-acted flag and place the close yourself.
+  they are **detectors, not executors**. They are re-evaluated on every call (no latch):
+  true while the condition holds, false again if the price comes back. Gate the close on
+  an already-acted flag to avoid repeated close orders, and place the close yourself.
 - **Price closes marketable.** A stop placed as a plain limit at the trigger price is
   non-marketable in a fast adverse move and never fills. Long close = sell at
   `price * (1 - slip)`; short close = buy at `price * (1 + slip)`.
@@ -512,6 +609,12 @@ Works with **unmanaged** orders using a **distinct `positionId` per slot**. Slot
 separate ids are independent and do not net; managed `DoLong`/`DoShort` take no positionId
 and still flip. Per-slot state: `GetPositionAmount("L")`, `StopLoss(pct, "L")`,
 `AverageEnterPrice("L")`, `GetPositionROI("L")`.
+
+Backtests do not enforce the position mode for unmanaged slots: with the bot set to
+One-Way, a long slot and a short slot still fill and are held side by side, and
+simulated accounts behave the same way. A backtest therefore cannot show how a one-way
+exchange account treats a hedge. Managed commands keep a single position even in Hedge
+mode: `DoShort` while long exits the long and opens the short.
 
 **Gate slot open/flat on `GetPositionAmount(id) > 0`, not `GetPositionDirection(id)`** —
 direction lingers as the last side after a close, so a direction-based flat check sticks
@@ -575,7 +678,7 @@ MinutesTillCandleClose(interval)  FormatDateTime(...)
 DoLong(note) DoShort(note) DoExitPosition(note) DoFlipPosition(note) DoSignal(sig)
 SignalLong/SignalBuy  SignalShort/SignalSell  SignalExitPosition  SignalNone
 EasyRSI(...) EasyMACD(...) EasyEMA(...) EasyOBV(...) EasyMFI(...)   -- return signal enums
-IndicatorContainer(s1,s2,s3)     -- [2] unanimous, [3] majority
+IndicatorContainer(s1,s2,s3)     -- [1] / .unanimousSignal, [2] / .consensusSignal (majority)
 
 -- Unmanaged trading  (PRICE FIRST)
 PlaceBuyOrder(price, amount [, opts])     PlaceSellOrder(price, amount [, opts])
@@ -584,9 +687,11 @@ PlaceExitPositionOrder(positionId, price, type, note)
 PlaceExitLongOrder(price, amount, market, template, note)   -- [BUILD] probe availability
 CancelOrder(id)  CancelAllOrders()
 MarketOrderType  LimitOrderType          -- userdata constants, NO parentheses
--- TRAP: in the long positional form, arg3 is a MARKET STRING (use PriceMarket()).
--- Passing a bare number there sets market="500" and fails at runtime with a null-ref.
--- Builds differ on whether arg4 is an order-type constant or a numeric template id — PROBE.
+-- TRAP: in the long positional form, arg3 is a MARKET STRING (use PriceMarket()) and
+-- arg4 the order-type constant (LimitOrderType / MarketOrderType). On TradeServer Cloud a
+-- bare number in either slot is NOT rejected: the order is still placed (with a number in
+-- arg4, as a resting limit), so the mistake goes unnoticed. Pass proper values or use the
+-- options table. [BUILD]
 -- The 2-arg form (price, amount) always works and defaults market/template.
 -- Options-table form also works: PlaceGoLongOrder(price, amount,
 --   {positionId=..., market=..., note=..., type=MarketOrderType, timeout=...})
@@ -635,7 +740,11 @@ Input(name, default, tooltip)  InputGroupHeader("Section")
 `VWAP` · `Volumes` · `GetVolumes` · **`SetStopLoss`** · **`SetTakeProfit`** · `Pi` · `AMA` ·
 `PlotColor` · `PlotLine` · `SetPlotColor` · `PlotArea` · `CurrentUnix` · `Market` (global) ·
 `BidAmounts` · `AskAmounts` · `GetOrderbookDepth` · `GetOrderbookLevel` · scalar
-`BidPrice`/`AskPrice`/`Bid`/`Ask` · `math.*` · `type()` · `tostring()` (HTSv3 only)
+`BidPrice`/`AskPrice`/`Bid`/`Ask` · `type()` · `print()` · `error()` · `select()` · `unpack()` ·
+`xpcall()` · `bit32`
+
+**Available:** `math.*` and `tostring()` are available on TradeServer Cloud but missing on
+some builds [BUILD]; see the Type-system class in Phase 3.
 
 **Substitutions that work:** stdev → hand-roll a rolling Sum/SumSq window
 (`var = E[x²] − E[x]²`) for true Pine `stdev(x,n)` parity, or `BBANDS(src,n,1,1)` upper −
@@ -654,10 +763,10 @@ stop/target → the BOOL detectors above, or your own price comparison.
 - **`Plot()` has no per-bar colour.** A named line is one colour for its life; per-tick
   colour swapping renders solid. A direction-coloured line needs a new uniquely-named line
   per direction change (which accrues one line object per flip in a long-lived live bot).
-  `Plot` also rejects nil.
-- **Save/Load counters read back as defaults inside `Finalize`/`CustomReport` in
-  backtests** — so backtest CustomReport counts are unreliable. The engine report, the
-  per-position ledger and the export rows are the truth. CustomReport is fine for LIVE bots.
+  `Plot` with a nil value aborts the run (not `pcall`-catchable); guard maybe-nil values.
+- **Save/Load inside `Finalize`** [BUILD]: on TradeServer Cloud `Load` inside `Finalize`
+  returns the current saved value, so `CustomReport` counts written there are correct in
+  backtests. Some builds have read defaults there; cross-check against the engine report.
 - **HTS's performance block disagrees with its own ledger** (PF and ROI can differ).
   **Quote the ledger.**
 
@@ -668,13 +777,34 @@ stop/target → the BOOL detectors above, or your own price comparison.
 Treat backtest ROI as an optimistic ceiling.
 
 No orderbook history · no slippage · no partial fills · no latency · no funding rates on
-perps · no exchange rejections (min-notional, dust, rate limits appear only live) ·
-limit orders fill if the candle range touches them, ignoring queue position (which
-**over-fills passive and grid strategies**) · per-minute execution.
+perps · no liquidation (leveraged positions are never force-closed, even after losing
+several times their margin, so high-leverage backtests are optimistic) · minimum-notional
+checks ARE modelled (blocked with a warning), but other exchange rejections (dust, rate
+limits) appear only live ·
+limit orders fill from the candle range alone (see "Limit fills in backtests" below),
+ignoring queue position (which **over-fills passive and grid strategies**) · per-minute
+execution.
+
+To model liquidation, compare the price with a liquidation level on every update and
+exit when it is breached.
+
+Limit fills in backtests: a marketable limit (a buy priced above the market, a sell below
+it) fills on the **next** tick at the market price, not at the limit price. A resting buy
+limit fills on the tick whose bar low falls below the limit, **at the limit price**, and
+`IsOrderFilled` is already true on that tick.
 
 HTS also auto-deposits 100k into a simulated wallet when a backtest's balance is
 insufficient, so wallet-based capital math in backtests is unreliable unless order sizes
 are small enough not to trigger it.
+
+Backtest wallet accounting: a buy debits the quote wallet at the **limit price**, not the
+fill price, and the difference is not refunded when a marketable limit fills lower. Sells
+credit fill price × amount minus the fee (taken in the quote coin). The report's realized
+profit uses fill prices, so the wallet and the report disagree; quote the report.
+
+A script that trades several markets gets one report block per market
+("Backtest report <market>"), including an all-zero block for an untraded main market.
+The figures are not combined; add them up for the total.
 
 ---
 

@@ -63,7 +63,8 @@ where the 31-day month comes from. On any given server you can still find the
 boundary in two or three `execute_backtest` probes — a rejected call errors
 instantly with `"License limit"` and starts nothing. Other tier limits that
 shape analysis work: trade bots 3/8/20/100+, max orders per bot 15/25/50/150
-(Starter/Standard/Pro/TradeServer).
+(Starter/Standard/Pro/TradeServer). The cap counts open orders only, and backtests
+use 150 on every plan.
 
 **The Labs window does not scale with the tier.** It is a flat 31 days on every
 Cloud plan including Pro — the check is hard-coded and never consults the
@@ -328,8 +329,8 @@ that opposes its direction (e.g. a long-only dip-buyer trading 5–6× more in
 the bear month than the bull month), no parameter sweep can repair it. The
 trigger fires exactly when the strategy cannot win. Stop sweeping and fix the
 structure: add a trend filter, or move to futures so the other direction
-exists. Note that shorting is a no-op on spot accounts — `DoShort` simply does
-nothing there.
+exists. Note that spot accounts cannot short — `DoShort` only sells a long position
+there, and with no position it is blocked.
 
 Report that conclusion plainly rather than shipping the least-bad parameter
 set as a "win".

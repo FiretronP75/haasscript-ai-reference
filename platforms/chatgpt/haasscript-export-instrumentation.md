@@ -65,7 +65,8 @@ end)
 
 -   Keep headers stable and descriptive.
 -   The number of values passed to `WriteExportData` must match
-    `InitExportData`.
+    `InitExportData`; a mismatch fails the whole backtest and cannot be
+    caught with `pcall`.
 -   Round floats when high precision is unnecessary.
 -   Avoid per-tick exports unless explicitly required.
 -   Do not assume the chart `interval` changes script execution

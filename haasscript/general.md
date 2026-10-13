@@ -61,7 +61,7 @@ This allows HaasScript users to take advantage of additional functionality that 
 
 By default, HaasScript is designed to execute on a per-minute basis. However, for users who require faster execution speeds, there are options available to increase the processing frequency.
 
-For instance, if high-speed execution is enabled, HaasScript can run as frequently as every 10 seconds on the Cloud platform, and every 5 seconds on the Enterprise platform. This allows users to take advantage of real-time market data and execute trades quickly and efficiently.
+For instance, if high-speed execution is enabled, HaasScript can run as frequently as every 10 seconds on the Cloud platform, and every 5 seconds on the Enterprise platform. On the Cloud platform the interval is not fixed: high-speed updates arrive roughly every 10 to 16 seconds, so do not rely on a fixed 10-second interval. This allows users to take advantage of real-time market data and execute trades quickly and efficiently.
 
 ### Memory
 

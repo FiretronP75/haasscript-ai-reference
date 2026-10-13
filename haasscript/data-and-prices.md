@@ -14,6 +14,8 @@
 
 # Price Data
 
+> **Note:** In a backtest, every price command returns the latest 500 candles of its interval on every update, for every interval (for example `ClosePrices()`, `ClosePrices(60)`, `ClosePrices(1440)` and `GetVolume()`). The history is loaded before the backtest start, so the full 500 candles are available on the first update. `#series` and `Count(series)` return the same length.
+
 ## BuyPrices
 
 ```lua
@@ -54,13 +56,15 @@ A collection with close prices. Sorted from new to old.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `interval` | `number` | No | The ticks interval. |
-| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. |
+| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. In backtests the default series already contains only closed candles (`[1]` is the last closed candle, on the main interval and on higher intervals), so this flag returns the same series. |
 | `market` | `string` | No | The market of the tick. Default is the selected main market. |
-| `hlcStyle` | `boolean` | No | When enabled, the data returned will be adjusted for HLC instead of OHLC. Meaning that the OHL data can change. |
+| `hlcStyle` | `boolean` | No | When enabled, each candle's open is replaced by the previous candle's close. The close, high and low are unchanged, so the open can lie above the high or below the low. |
 
 **Returns:** `HaasNumberCollection`
 
 Returns a collection of close prices.
+
+Higher-interval candles are aligned to the clock. In a backtest on a 1-minute chart, `ClosePrices(60)[1]` is the last completed clock hour (minutes 0 to 59 of the previous hour); the hour still forming is not included.
 
 ---
 
@@ -86,20 +90,22 @@ Returns a container with named fields (also accessible by 1-based index).
 
 | Index | Name | Type | Description |
 |-------|------|------|-------------|
-| 1 | `open` | `number` | The open price of the current candle. |
-| 2 | `high` | `number` | The high price of the current candle. |
-| 3 | `low` | `number` | The low price of the current candle. |
-| 4 | `close` | `number` | The close price of the current candle. |
-| 5 | `volume` | `number` | The volume of the current candle. |
-| 6 | `ask` | `number` | The ask/buy price of the current candle. |
-| 7 | `bid` | `number` | The bid/sell price of the current candle. |
+| 1 | `open` | `number` | The open price of the newest candle (index [1]). |
+| 2 | `high` | `number` | The high price of the newest candle (index [1]). |
+| 3 | `low` | `number` | The low price of the newest candle (index [1]). |
+| 4 | `close` | `number` | The close price of the newest candle (index [1]). |
+| 5 | `volume` | `number` | The volume of the newest candle. |
+| 6 | `ask` | `number` | The current best ask price. Also a real quote in backtests; it can differ from `close`. |
+| 7 | `bid` | `number` | The current best bid price. Also a real quote in backtests; it can differ from `close`. |
 
 ```lua
 local cp = CurrentPrice()
 Log(cp.ask)    -- ask price (named access)
 Log(cp[6])     -- same value (index access)
-Log(cp.close)  -- close price of current candle
+Log(cp.close)  -- close price of the newest candle
 ```
+
+`open`, `high`, `low` and `close` are the same values as index [1] of `OpenPrices()`, `HighPrices()`, `LowPrices()` and `ClosePrices()`.
 
 ---
 
@@ -207,9 +213,9 @@ A collection with high prices. Sorted from new to old.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `interval` | `number` | No | The ticks interval. |
-| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. |
+| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. In backtests the default series already contains only closed candles (`[1]` is the last closed candle, on the main interval and on higher intervals), so this flag returns the same series. |
 | `market` | `string` | No | The market of the tick. Default is the selected main market. |
-| `hlcStyle` | `boolean` | No | When enabled, the data returned will be adjusted for HLC instead of OHLC. Meaning that the OHL data can change. |
+| `hlcStyle` | `boolean` | No | When enabled, each candle's open is replaced by the previous candle's close. The close, high and low are unchanged, so the open can lie above the high or below the low. |
 
 **Returns:** `HaasNumberCollection`
 
@@ -276,9 +282,9 @@ A collection with low prices. Sorted from new to old.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `interval` | `number` | No | The ticks interval. |
-| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. |
+| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. In backtests the default series already contains only closed candles (`[1]` is the last closed candle, on the main interval and on higher intervals), so this flag returns the same series. |
 | `market` | `string` | No | The market of the tick. Default is the selected main market. |
-| `hlcStyle` | `boolean` | No | When enabled, the data returned will be adjusted for HLC instead of OHLC. Meaning that the OHL data can change. |
+| `hlcStyle` | `boolean` | No | When enabled, each candle's open is replaced by the previous candle's close. The close, high and low are unchanged, so the open can lie above the high or below the low. |
 
 **Returns:** `HaasNumberCollection`
 
@@ -347,9 +353,9 @@ A collection with open prices. Sorted from new to old.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `interval` | `number` | No | The ticks interval. |
-| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. |
+| `fullCandles` | `boolean` | No | If true, the last closed candles will be returned. In backtests the default series already contains only closed candles (`[1]` is the last closed candle, on the main interval and on higher intervals), so this flag returns the same series. |
 | `market` | `string` | No | The market of the tick. Default is the selected main market. |
-| `hlcStyle` | `boolean` | No | When enabled, the data returned will be adjusted for HLC instead of OHLC. Meaning that the OHL data can change. |
+| `hlcStyle` | `boolean` | No | When enabled, each candle's open is replaced by the previous candle's close. The close, high and low are unchanged, so the open can lie above the high or below the low. |
 
 **Returns:** `HaasNumberCollection`
 
@@ -464,7 +470,7 @@ Creates a market string that can be used for a variety of commands.
 | `priceSource` | `string` | No | The price source of the market. If empty the main bot price source is set. |
 | `baseCurrency` | `string` | No | The base currency of the market. If empty the bots base currency price source is set. |
 | `quoteCurrency` | `string` | No | The quote currency of the market. If empty the bots main quote currency is set. |
-| `contractName` | `string` | No | The contract name of the market. If empty the bots main contract name is set. |
+| `contractName` | `string` | No | The contract name of the market. If empty the bots main contract name is set. Used exactly as given (case is not normalized), so pass the exchange's contract name, for example `PERPETUAL`. |
 
 **Returns:** `string`
 
@@ -487,9 +493,11 @@ Gets a list of the last trades.
 | `depth` | `number` | No | Maximum number of records returned (can return less). |
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
 
-**Returns:** `HaasNumberCollection`
+**Returns:** `dynamic`
 
-Returns the last trades. Array format: [[price, amount, isBuy?, unix], ... ].
+Returns a list of the last trades as trade objects with the fields `price`, `amount` and `isBuy` (not nested arrays).
+
+In backtests, returns nil (no error or warning), so `#result` or `result[1]` raises a Lua error. Check for nil before use.
 
 ---
 
@@ -507,7 +515,7 @@ Gets the orderbook on a specific market.
 |------|------|----------|-------------|
 | `market` | `string` | No | The market returned by PriceMarket(), InputAccountMarket() or InputMarket() for example. |
 
-**Returns:** `HaasNumberCollection`
+**Returns:** `dynamic`
 
 Returns a collection with 4 arrays.
 
@@ -517,8 +525,10 @@ Returns a collection with 4 arrays.
 |-------|------|------|-------------|
 | 1 | `askPrices` | `HaasNumberCollection` | Ask/buy prices. Sorted from low to high. |
 | 2 | `askAmounts` | `HaasNumberCollection` | Ask/buy amounts. Sorted on price from low to high. |
-| 3 | `bidPrices` | `HaasNumberCollection` | Bid/sell prices. Sorted from low to high. |
-| 4 | `bidAmounts` | `HaasNumberCollection` | Bid/sell amounts. Sorted on price from low to high. |
+| 3 | `bidPrices` | `HaasNumberCollection` | Bid/sell prices. Best bid first (high to low) in backtests. |
+| 4 | `bidAmounts` | `HaasNumberCollection` | Bid/sell amounts, in the same order as `bidPrices`. |
+
+Backtests have no historical order book: there `GetOrderbook()` returns a synthetic book of 100 levels per side around the current price, each level 0.05% further from the previous one, with amounts 1, 2, 3, ... Order-book logic cannot be validated in a backtest.
 
 ---
 
@@ -538,7 +548,7 @@ Gets a list of the orderbook ask records.
 
 **Returns:** `dynamic`
 
-Returns an array of bid prices and order sizes. Output format: [[price, amount], [price, amount] ...].
+Returns a list of ask levels, best (lowest) ask first. Each element is a `[price, amount]` pair. Output format: [[price, amount], [price, amount] ...]. In backtests the list holds 10 levels.
 
 ---
 
@@ -558,7 +568,7 @@ Gets a list of the orderbook bid records.
 
 **Returns:** `dynamic`
 
-Returns an array of bid prices and order sizes. Output format: [[price, amount], [price, amount] ...].
+Returns a list of bid levels, best (highest) bid first. Each element is a `[price, amount]` pair. Output format: [[price, amount], [price, amount] ...]. In backtests the list holds 10 levels.
 
 ---
 
@@ -746,7 +756,7 @@ Gets the return on investment percentage based on the total cost/margin used of 
 
 **Returns:** `number`
 
-Returns the ROI percentage.
+Returns the ROI percentage of the open position, fees excluded. On spot it equals `GetPositionROI()`. Returns 0 with no open position.
 
 ---
 
@@ -786,17 +796,19 @@ The trading report container.
 | 12 | `outlierLossRatio` | `number` | Outlier Loss Ratio. |
 | 13 | `profitMarginRatio` | `number` | Profit Margin Ratio (Gain / Total Used Margin). |
 | 14 | `biggestWin` | `number` | Biggest Winner. |
-| 15 | `biggestLoss` | `number` | Biggest Loser. |
+| 15 | `biggestLoss` | `number` | Biggest Loser: a position's realized loss including its entry and exit fees. |
 | 16 | `highestPointInProfit` | `number` | Highest Point in total PNL. |
 | 17 | `lowestPointInProfit` | `number` | Lowest Point in total PNL. |
 | 18 | `totalMarginUsed` | `number` | Total Margin Used. |
-| 19 | `averageMargin` | `number` | Average Margin used per position. |
+| 19 | `averageMargin` | `number` | Average Margin used per position: the mean of each position's margin (notional ÷ the leverage in force when it opened). |
 | 20 | `averageProfit` | `number` | Average Profit per position. |
 | 21 | `closedPositions` | `number` | Closed Positions count. |
 | 22 | `profitablePositions` | `number` | Profitable Positions count. |
 | 23 | `losingPositions` | `number` | Losing Positions count. |
 | 24 | `executedOrders` | `number` | Executed Orders count. |
 | 25 | `completedOrders` | `number` | Completed Orders count. |
+
+In the backtest report, "Return on investment" is the realized profit ÷ `averageMargin`, and "Fee costs" is the fee rate × the notional of every fill. "Average open time" is the mean time from order placement to fill, not how long positions were held.
 
 ---
 
@@ -825,7 +837,7 @@ Sets a custom base value used in the ROI calculation (realized profits / baseVal
 ## AdjustTimestamp
 
 ```lua
-AdjustTimestamp([unix], [addSeconds], [addMinutes], [addHours], [addDays], [addMonths], [addYears])
+AdjustTimestamp([unix], [addSeconds], [addMinutes], [addHours], [addMonths], [addDays], [addYears])
 ```
 
 Adjusts an Unix timestamp.
@@ -838,8 +850,8 @@ Adjusts an Unix timestamp.
 | `addSeconds` | `number` | No | Number of seconds to add. |
 | `addMinutes` | `number` | No | Number of minutes to add. |
 | `addHours` | `number` | No | Number of hours to add. |
-| `addDays` | `number` | No | Number of days to add. |
 | `addMonths` | `number` | No | Number of months to add. |
+| `addDays` | `number` | No | Number of days to add. |
 | `addYears` | `number` | No | Number of years to add. |
 
 **Returns:** `number`
@@ -875,7 +887,7 @@ Returns the close timestamp of the candle.
 CreateTimestamp([year], [month], [day], [hour], [minute], [second])
 ```
 
-Creates an Unix timestamp from the specified value.
+Creates an Unix timestamp (UTC) from the specified value. Omitted arguments take the current time, so `CreateTimestamp(2024, 1, 1)` is 1 January 2024 at the current time of day, not at midnight. Pass all six arguments for a fixed time: `CreateTimestamp(2024, 1, 1, 0, 0, 0)` = 1704067200.
 
 **Parameters:**
 
@@ -946,7 +958,7 @@ Gets the hour the current time or requested time. Based on UTC.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `unix` | `number` | No | An unix timestamp, by default the current time. |
+| `unix` | `number` | No | An unix timestamp, by default the current time. 0 also means the current time. |
 
 **Returns:** `number`
 
@@ -1060,7 +1072,7 @@ Returns the year.
 FormatDateTime([unix], [dateDelimiter], [dateTimeDelimiter], [timeDelimiter], [includeSeconds], [includeTime], [includeYear])
 ```
 
-Formats a unix datetime number (to "YYYY-MM-DD at HH:MM" by default).
+Formats a unix datetime number (to "YYYY-MM-DD at HH:MM" by default). Based on UTC: `FormatDateTime(1700000000)` = "2023-11-14 at 22:13".
 
 **Parameters:**
 
@@ -1161,14 +1173,16 @@ Returns the actual time slept in milliseconds.
 
 **Note:** Sleep time does not count toward script execution timeout, allowing multiple Sleep() calls without triggering warnings.
 
+`Sleep` also pauses in backtests, so it lengthens the backtest run.
+
 **Example — Anti-Detection Order Timing:**
 
 ```lua
 -- Add random delay to avoid predictable patterns
 local rsi = RSI(ClosePrices(), 14)
 
-if rsi.Value < 30 then
-    local delayMs = Random(0, 9000).Value  -- 0-9 seconds
+if rsi < 30 then
+    local delayMs = Random(0, 9000)  -- 0-9 seconds
     Log("Delaying order by " .. delayMs .. "ms")
     Sleep(delayMs)
     DoLong()
@@ -1183,7 +1197,7 @@ end
 StartTimer([key])
 ```
 
-Starts a timer.
+Starts a timer. A timer lasts for the current update only: on a later update `GetTimer` logs "WARNING: GetTimer(): Cannot get a timer that doesn't exist" and returns 0.
 
 **Parameters:**
 
@@ -1238,15 +1252,17 @@ Returns the current unix timestamp.
 Balance([accountId], [coin], [market])
 ```
 
-Total balance specifications of a specific currency. Available, locked and total balance. Does not work yet in backtests and for simulated accounts.
+Total balance specifications of a specific currency. Available, locked and total balance. Works in backtests; does not work yet for simulated accounts.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `accountId` | `string` | No | The guid returned by AccountGuid(), InputAccount() or InputAccountMarket() for example. Can be left empty for default properties. |
-| `coin` | `string` | No | Coin of which to retrieve the wallet amount. Default value is the 'UnderlyingAsset' currency. |
+| `coin` | `string` | No | Coin of which to retrieve the wallet amount. Default value is the 'UnderlyingAsset' currency (the base coin on a spot market, for example BTC on BTC/USDT). |
 | `market` | `string` | No | Optional market parameter for exchanges with separates wallet for each market. |
+
+The first positional argument is always `accountId`. A coin passed as the only argument (`Balance("USDT")`) is ignored without an error, and the default coin's balance is returned. To select a coin, pass the account first — `Balance(AccountGuid(), "USDT")` — or use a named-argument table: `Balance({coin = "USDT"})`.
 
 **Returns:** `dynamic`
 
@@ -1260,6 +1276,8 @@ Returns a result object with the available, locked and total balance.
 | 2 | `locked` | `number` | The locked balance for orders and/or position margin among others. |
 | 3 | `total` | `number` | The total balance. Available and locked. |
 
+Field names are lowercase and case-sensitive: `.available` returns the value, `.Available` returns nil.
+
 ---
 
 ## BalanceAmount
@@ -1268,15 +1286,17 @@ Returns a result object with the available, locked and total balance.
 BalanceAmount([accountId], [coin], [market])
 ```
 
-Total balance value of a specific currency. Including order and position margin. Does not work yet in backtests and for simulated accounts.
+Total balance value of a specific currency. Including order and position margin. Works in backtests; does not work yet for simulated accounts.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `accountId` | `string` | No | The guid returned by AccountGuid(), InputAccount() or InputAccountMarket() for example. Can be left empty for default properties. |
-| `coin` | `string` | No | Coin of which to retrieve the wallet amount. Default value is the 'UnderlyingAsset' currency. |
+| `coin` | `string` | No | Coin of which to retrieve the wallet amount. Default value is the 'UnderlyingAsset' currency (the base coin on a spot market, for example BTC on BTC/USDT). |
 | `market` | `string` | No | Optional market parameter for exchanges with separates wallet for each market. |
+
+The first positional argument is always `accountId`. A coin passed as the only argument (`BalanceAmount("USDT")`) is ignored without an error, and the default coin's balance is returned. Pass the account first — `BalanceAmount(AccountGuid(), "USDT")` — or use `BalanceAmount({coin = "USDT"})`.
 
 **Returns:** `number`
 
@@ -1290,7 +1310,9 @@ Returns the total balance value.
 MarginToTradeAmount(price, margin, leverage, [market])
 ```
 
-Convert margin to a trade amount. In spot markets, the margin is anticipated to be in the quote currency (e.g., USDT in BTC/USDT). For leverage markets, the margin is expected to be in the underlying currency.
+Convert margin to a trade amount. In spot markets, the margin is anticipated to be in the quote currency (e.g., USDT in BTC/USDT). For leverage markets, the margin is expected to be in the margin currency of the contract (USDT on a USDT perpetual).
+
+On spot markets the leverage is ignored: the result is margin / price (`MarginToTradeAmount(45000, 1000, 10)` = 0.02222).
 
 **Parameters:**
 
@@ -1304,6 +1326,8 @@ Convert margin to a trade amount. In spot markets, the margin is anticipated to 
 **Returns:** `number`
 
 Returns the calculated trade amount based on the margin.
+
+On a Bybit USDT perpetual the result is margin × leverage / (price × (1 + (2 × leverage − 1) × takerFee)), rounded down to the amount step, where takerFee is `TakersFee()` / 100: the margin also covers the taker fees to open and to close the position. The difference from margin × leverage / price grows with the leverage (about 1.4 % at 10x, about 10 % at 100x).
 
 ---
 
@@ -1393,7 +1417,7 @@ Returns the maximum long amount.
 UserPositionContainer([accountId], [market], [leverage], [direction])
 ```
 
-Gets all the information from the open user position.
+Gets all the information from the open user position: the account's position on the market. In backtests it does not reflect the script's own positions and reports no position. Read the script's own positions with PositionContainer() and the position commands, which behave the same in backtests and running bots.
 
 **Parameters:**
 
@@ -1404,21 +1428,26 @@ Gets all the information from the open user position.
 | `leverage` | `number` | No | Deprecated, Can be ignored. |
 | `direction` | `enum` | No | Direction of the position PositionLong or PositionShort. Empty for any. If there is both a long and short position, the long position will be returned. |
 
+The first positional argument is always `accountId`. A market passed as the only argument (`UserPositionContainer("BINANCE_ETH_USDT_")`) is ignored without an error, and the main market's position is returned. Pass the account first: `UserPositionContainer(AccountGuid(), "BINANCE_ETH_USDT_")`.
+
 **Returns:** `dynamic`
 
 Returns an array with position information.
+
+A full container is returned even when there is no position (numbers 0, flags false, direction NoPosition); it is never nil.
 
 **Container fields** (accessible by name or 1-based index):
 
 | Index | Name | Type | Description |
 |-------|------|------|-------------|
-| 1 | `market` | `string` | The market of the position. |
+| 1 | `market` | `string` | The position key: account id, market and a suffix joined by `_` (for example `<accountId>_BINANCE_BTC_USDT__-1`), not a plain market name. |
 | 2 | `isLong` | `boolean` | Set on true when the direction is long. |
 | 3 | `isShort` | `boolean` | Set on true when the direction is short. |
 | 4 | `enterPrice` | `number` | The average enter price. |
 | 5 | `amount` | `number` | The amount open in the position. |
 | 6 | `profit` | `number` | The realized + unrealized profits. |
 | 7 | `roi` | `number` | The ROI based on the used margin and realized + unrealized profits. |
+| 8 | `direction` | `enum` | The position direction: PositionLong, PositionShort or NoPosition. |
 
 ---
 
@@ -1435,12 +1464,14 @@ Get the available amount in the wallet.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `accountId` | `string` | No | The guid returned by AccountGuid(), InputAccount() or InputAccountMarket() for example. Can be left empty for default properties. |
-| `coin` | `string` | No | Coin of which to retrieve the wallet amount. |
+| `coin` | `string` | No | Coin of which to retrieve the wallet amount. Default value is the 'UnderlyingAsset' currency (the base coin on a spot market, for example BTC on BTC/USDT). |
 | `market` | `string` | No | Optional market parameter for exchanges with separates wallet for each market. |
+
+The first positional argument is always `accountId`. A coin passed as the only argument (`WalletAmount("USDT")`) is ignored without an error, and the default coin's amount is returned. Pass the account first — `WalletAmount(AccountGuid(), "USDT")` — or use `WalletAmount({coin = "USDT"})`.
 
 **Returns:** `number`
 
-Returns the available amount.
+Returns the available amount. On leverage markets with cross margin, in backtests, this is the balance after fees and realized profit minus the margin in use; unrealized profit is not included.
 
 ---
 

@@ -35,16 +35,27 @@ This folder contains comprehensive HaasScript documentation optimized for AI age
 
 - HaasScript is built on top of Lua but includes 750+ built-in commands specific to cryptocurrency trading
 - Case-sensitive language with indexing starting at 1 (not 0)
-- Executes on a per-minute basis by default (can run every 10 seconds on Cloud, 5 seconds on Enterprise with high-speed enabled)
+- Executes on a per-minute basis by default (can run about every 10 seconds on Cloud, 5 seconds on Enterprise with high-speed enabled; on Cloud, high-speed updates arrive roughly every 10 to 16 seconds, so do not rely on a fixed 10-second interval)
 - Supports both script editor (code-based) and visual editor (node-based) development
 - Custom commands can be created for reusable logic across multiple scripts
 
 ### Key Language Differences from Standard Lua
 
 - `Log()` replaces Lua's `print()` command
-- Array indexing must start at 1 (index 0 throws an error in HaasScript)
+- Array indexing must start at 1. Index 0 fails in every form, and `pcall` does not prevent it: a computed `[0]` aborts the script ("Argument out of range exception."), and `ArrayIndex(series, 0)` returns nil but logs an error that marks the backtest failed. Never write `[0]` anywhere in the source, comments and strings included: the compiler rejects the text itself.
+- Indexing past the end of a series (`close[#close + 1]`, `[1]` on an empty series, or `ArrayIndex(series, #series + 1)`) does not return nil: it aborts the backtest with "Argument out of range exception." and `pcall` cannot catch it. Keep computed indexes within 1 .. `#series`, and test for an empty series with `#series == 0`, not `series[1] == nil`.
 - Custom HaasScript commands replace many standard Lua functions
 - Optimized specifically for trading operations and data manipulation
+- The Lua runtime is MoonSharp, which follows Lua 5.2 (`_VERSION` reports `MoonSharp 2.0.0.0` on TradeServer Cloud).
+- Standard library on TradeServer Cloud: `os`, `io`, `debug`, `coroutine`, `require`, `dofile`, `loadfile`, `load`, `loadstring`, `utf8`, `getfenv` and `setfenv` are not available (nil). `string`, `table`, `math`, `pairs`, `ipairs`, `pcall`, `tostring`, `tonumber`, `setmetatable`, `rawget` and the other metatable functions are available.
+- The compiler rejects `bit32`, `error`, `print`, `select`, `type`, `unpack` and `xpcall` as unknown references, although they exist at runtime.
+- `_G` is not available: the compiler rejects it with "Unknown references: _G".
+- On TradeServer Cloud, `!=` is also accepted as not-equal; prefer `~=` for portability with standard Lua
+- `tonumber("0x10")` returns nil (hexadecimal strings are not parsed), and `string.format("%e", 1500)` gives `1.500000e+003` (three-digit exponent). Lua runtime error messages start with a position prefix, `chunk_0:(line,startColumn-endColumn):`.
+- Command arguments are checked when the command runs, not at compile time. A wrong argument count ("Round(): Invalid input count of 1 (requires 2 inputs).") or a value of the wrong type ("Round(): Unable to cast Boolean to a numeric (list) value.", followed by "Something went wrong parsing the parameter 'input'") stops the script; `pcall` does not catch it, and a backtest fails. The parameter name in the message is the one in the command's reference table.
+- Some commands accept a single Lua table of named arguments, keyed exactly (case-sensitive) by the parameter names in the command's reference table. This lets a script skip optional leading parameters: `Balance({coin = "USDT"})` returns the USDT balance, whereas `Balance("USDT")` puts the coin in the `accountId` slot. Commands known to accept it: `Balance`, `BalanceAmount`, `WalletAmount`, `ClosePrices`, `HighPrices`, `PlaceExitPositionOrder`. Misspelled or unknown keys are ignored without an error, and the parameter keeps its default.
+- Support is per command. Commands with a required parameter count the table as one argument and stop the script (`SMA({prices = close, period = 10})` → "SMA(): Invalid input count of 1 (requires 2 inputs)."; the same for `GetHigh`). Use positional arguments unless a command is known to accept the table.
+- A trailing options table after the required arguments is also accepted by the order commands: `PlaceBuyOrder(price, amount, {positionId = "slotA", note = "entry", type = MarketOrderType})`. Input commands accept one in the tooltip position: `Input("Some Field", 0, {group = "some group"})`.
 
 > **Important:** This is a common gotcha in HaasScript - always use HaasScript's built-in math functions (`Abs()`, `Round()`, `Max()`, `Min()`, etc.) instead of Lua's `math.*` library when working with values that come from HaasScript operations.
 
@@ -56,6 +67,8 @@ This folder contains comprehensive HaasScript documentation optimized for AI age
 | Local | Use `local` keyword | Only accessible within defined scope and sub-scopes |
 
 **Best practice:** Use local variables unless global access is specifically needed.
+
+In a backtest, global variables keep their value from one update to the next, while locals start fresh on every update. Globals set during the activation (compile) pass are not carried into the run, and globals do not carry from one backtest run to the next. A global initialised with `counter = IfNull(counter, 0)` therefore persists through the run.
 
 ---
 
@@ -313,8 +326,9 @@ end
 ### Signal Consensus
 
 ```lua
-local rsiSignal = EasyRSI(14, 30, 70)
-local macdSignal = EasyMACD(12, 26, 9)
+-- Easy indicators take (chartIndex, [name], [interval]), not the indicator's periods or levels
+local rsiSignal = EasyRSI(0)
+local macdSignal = EasyMACD(0)
 
 -- Execute only when both indicators agree
 if rsiSignal == SignalLong and macdSignal == SignalLong then
@@ -328,8 +342,8 @@ end
 
 ```lua
 local signals = IndicatorContainer(signal1, signal2, signal3)
-local unanimousSignal = signals[2]  -- All must agree
-local consensusSignal = signals[3]  -- Majority (>50%)
+local unanimousSignal = signals.unanimousSignal  -- All must agree (also signals[1])
+local consensusSignal = signals.consensusSignal  -- Majority (>50%) (also signals[2])
 
 DoSignal(consensusSignal)
 ```
@@ -357,14 +371,16 @@ DoSignal(consensusSignal)
 - Array indexing (must start at 1)
 - Appropriate use of offset in data functions
 - Clear logging for debugging
-- Only use the supported colors (see below)
+- Only use the supported colors in plots (see below); `Log` also accepts any CSS color string
 
 #### Supported Colors
 
+These are color constants (color objects, not strings), used without quotes:
+
 ```
-"Aqua", "Black", "Blue", "Cyan", "DarkGray", "DarkGreen",
-"Fuchsia", "Gold", "Gray", "Green", "Maroon", "Olive",
-"Orange", "Purple", "Red", "SkyBlue", "Teal", "White", "Yellow"
+Aqua, Black, Blue, Cyan, DarkGray, DarkGreen,
+Fuchsia, Gold, Gray, Green, Maroon, Olive,
+Orange, Purple, Red, SkyBlue, Teal, White, Yellow
 ```
 
 ### Debugging Support
