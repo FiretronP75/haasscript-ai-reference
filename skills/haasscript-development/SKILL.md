@@ -227,10 +227,11 @@ during warmup.
       **rejected as `for` limits** ("'for' limit must be a number"); a plain number
       restored by `Load()` works. `+ 0` does not fix it. A userdata control
       variable also makes `string.format` throw, which kills string-keyed tables.
-- [ ] **The compiler rejects `type`, `print`, `error`, `select`, `unpack`, `xpcall` and
-      `bit32`** [BUILD] ("Unknown references"), although they exist at runtime. Use
-      `pcall` guards, `nil` checks and `#` instead of `type()`, and `Log()` instead of
-      `print()`.
+- [ ] **The compiler rejects `print`** ("Unknown references"), although it exists at
+      runtime; use `Log()`. `type`, `error`, `select`, `unpack`, `xpcall` and `bit32`
+      [BUILD] compile and work on TradeServer Cloud, but earlier builds rejected them as
+      unknown references; on such a build, use `pcall` guards, `nil` checks and `#`
+      instead of `type()`.
 - [ ] **`tostring()`** [BUILD]. Works on HTSLocal and in the TradeServer Cloud Web Editor
       (`tostring(1.5)` = "1.5"); some builds have rejected it. Implicit `..` coercion works
       everywhere. Note `..` binds looser than `+ -`.
@@ -740,8 +741,10 @@ Input(name, default, tooltip)  InputGroupHeader("Section")
 `VWAP` · `Volumes` · `GetVolumes` · **`SetStopLoss`** · **`SetTakeProfit`** · `Pi` · `AMA` ·
 `PlotColor` · `PlotLine` · `SetPlotColor` · `PlotArea` · `CurrentUnix` · `Market` (global) ·
 `BidAmounts` · `AskAmounts` · `GetOrderbookDepth` · `GetOrderbookLevel` · scalar
-`BidPrice`/`AskPrice`/`Bid`/`Ask` · `type()` · `print()` · `error()` · `select()` · `unpack()` ·
-`xpcall()` · `bit32`
+`BidPrice`/`AskPrice`/`Bid`/`Ask` · `print()` (use `Log()`)
+
+`type()`, `error()`, `select()`, `unpack()`, `xpcall()` and `bit32` were also rejected on
+earlier builds; they compile and work on TradeServer Cloud.
 
 **Available:** `math.*` and `tostring()` are available on TradeServer Cloud but missing on
 some builds [BUILD]; see the Type-system class in Phase 3.

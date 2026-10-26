@@ -48,7 +48,7 @@ This folder contains comprehensive HaasScript documentation optimized for AI age
 - Optimized specifically for trading operations and data manipulation
 - The Lua runtime is MoonSharp, which follows Lua 5.2 (`_VERSION` reports `MoonSharp 2.0.0.0` on TradeServer Cloud).
 - Standard library on TradeServer Cloud: `os`, `io`, `debug`, `coroutine`, `require`, `dofile`, `loadfile`, `load`, `loadstring`, `utf8`, `getfenv` and `setfenv` are not available (nil). `string`, `table`, `math`, `pairs`, `ipairs`, `pcall`, `tostring`, `tonumber`, `setmetatable`, `rawget` and the other metatable functions are available.
-- The compiler rejects `bit32`, `error`, `print`, `select`, `type`, `unpack` and `xpcall` as unknown references, although they exist at runtime.
+- The compiler rejects `print` as an unknown reference, although it exists at runtime (and does nothing there: use `Log()`). On TradeServer Cloud, `bit32`, `error`, `select`, `type`, `unpack` and `xpcall` compile and work as in standard Lua; earlier builds rejected them as unknown references too.
 - `_G` is not available: the compiler rejects it with "Unknown references: _G".
 - On TradeServer Cloud, `!=` is also accepted as not-equal; prefer `~=` for portability with standard Lua
 - `tonumber("0x10")` returns nil (hexadecimal strings are not parsed), and `string.format("%e", 1500)` gives `1.500000e+003` (three-digit exponent). Lua runtime error messages start with a position prefix, `chunk_0:(line,startColumn-endColumn):`.
