@@ -37,7 +37,7 @@ local currentRsi = ArrayGet(rsi, 1)
 local rsiHistory = rsi
 ```
 
-Indexing a `HaasNumberCollection` with brackets (`close[3]`, with a literal or a variable alike) returns the sub-series that starts at that index, not a single number: on a 500-element window `close[3]` has 498 elements. In comparisons and string concatenation a series acts as its newest element, so `close[3] > x` uses element 3; in arithmetic it stays element-wise (`close[3] * 2` is a 498-element series). Use `ArrayGet(series, i)` (alias of `ArrayIndex`) to get element i as a plain number.
+Indexing a `HaasNumberCollection` with brackets (`close[3]`, with a literal or a variable alike) returns the sub-series that starts at that index, not a single number: on a 500-element window `close[3]` has 498 elements. In comparisons, and when concatenated with a string, a series acts as its newest element, so `close[3] > x` uses element 3; in arithmetic it stays element-wise (`close[3] * 2` is a 498-element series). Use `ArrayGet(series, i)` (alias of `ArrayIndex`) to get element i as a plain number.
 
 Lua operators work on a `HaasNumberCollection`. Arithmetic (`+ - * / %` and unary minus) is element-wise and returns a series, with the series on either side (`10 - close` is a series too):
 - `(close + open) / 2` has 500 elements.
@@ -49,6 +49,12 @@ Comparisons (`<`, `>`, `<=`, `>=`, `==`, `~=`) use the newest element of each si
 - `==` between two series compares only their newest elements, so `HNC(3, 7) == HNC(5, 7)` is true.
 - An empty series compares as 0.
 - Comparing a series with a string, boolean, enum constant or Lua table is silently false, even for `<` (`HNC(3, 7) < "8"` is false, with no error).
+
+Concatenation (`..`) gives a series' newest element as text only when the other side is a string: `"c=" .. close` and `close .. " c"` work.
+- With a number or another series on the other side, one side is silently lost: `1 .. HNC(3, 7)` is "7", `HNC(3, 7) .. 1` is "1", `HNC(3, 7) .. HNC(2, 8)` is "8".
+- `..` groups from the right, so `"x " .. close .. 1` loses the close; write `("x " .. close) .. 1`.
+- `close .. nil` stops the script, and `pcall` does not catch it.
+- A container (`CurrentPrice()`, `MACD(...)`) or a color raises "attempt to concatenate a userdata value"; an enum constant concatenates as its name.
 
 Plain Lua tables still raise an error with operators.
 

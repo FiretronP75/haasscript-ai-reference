@@ -235,8 +235,11 @@ during warmup.
 - [ ] **`tostring()`** [BUILD]. Works on HTSLocal and in the TradeServer Cloud Web Editor
       (`tostring(1.5)` = "1.5"); some builds have rejected it. Implicit `..` coercion works
       everywhere. Note `..` binds looser than `+ -`.
-- [ ] **Concatenating a collection gives its newest element only** (`"c=" .. close` is one
-      value). `Log(series)` on its own prints the whole series; log values, not series.
+- [ ] **Concatenating a collection gives its newest element only, and only next to a
+      string** (`"c=" .. close` is one value). Next to a number or another series one side
+      is silently lost (`close .. 1` is "1"); `..` groups from the right, so
+      `"x " .. close .. 1` loses the close. `Log(series)` on its own prints the whole series;
+      log values, not series.
 - [ ] **Never `Save()` a container.** `Save(k, CurrentPrice())` saves nothing, logs
       "Save(): Cannot save a container" and marks the backtest failed, while the script
       keeps running and `pcall` sees no error. Save plain fields such as `.close`.
@@ -439,7 +442,8 @@ Log("c2=" .. Round(c2, 2) .. " ema2=" .. Round(ema2, 2)
 ```
 
 Implicit `..` coercion works everywhere; `tostring()` works on TradeServer Cloud [BUILD].
-Concatenating a collection gives only its newest element; log values, not series. Note
+Concatenating a collection gives only its newest element, and only next to a string (next
+to a number or another series one side is silently lost); log values, not series. Note
 that on a crash `Log()` flushes reliably only to a *region* — the throw swallows the last
 unflushed chunk. For an exact
 bisect, use an early-exit probe (`do return end`) on the suspect bar rather than trusting
