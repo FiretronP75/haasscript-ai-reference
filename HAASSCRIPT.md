@@ -39,9 +39,20 @@ local rsiHistory = rsi
 
 Indexing a `HaasNumberCollection` with brackets (`close[3]`, with a literal or a variable alike) returns the sub-series that starts at that index, not a single number: on a 500-element window `close[3]` has 498 elements. In comparisons and string concatenation a series acts as its newest element, so `close[3] > x` uses element 3; in arithmetic it stays element-wise (`close[3] * 2` is a 498-element series). Use `ArrayGet(series, i)` (alias of `ArrayIndex`) to get element i as a plain number.
 
-Lua operators work on a `HaasNumberCollection`: arithmetic is element-wise and returns a series (`(close + open) / 2` has 500 elements; mixed lengths truncate to the shorter, so `ATR(...) / close * 100` has the length of the ATR series); comparisons (`<`, `>`, `==`) use the newest element of each side, so `==` between two series compares values, not identity. Plain Lua tables still raise an error with operators.
+Lua operators work on a `HaasNumberCollection`. Arithmetic (`+ - * / %` and unary minus) is element-wise and returns a series, with the series on either side (`10 - close` is a series too):
+- `(close + open) / 2` has 500 elements.
+- Mixed lengths truncate to the shorter, so `ATR(...) / close * 100` has the length of the ATR series.
+- `^` fails on a series ("attempt to perform arithmetic on a userdata value"); use `Pow(x, n)`.
+- A numeric string operand is converted (`HNC(3, 7) + "1"` is 8, 8, 8). A non-numeric string or a boolean stops the script, and `pcall` does not catch it.
 
-Assigning with brackets inserts rather than overwrites: after `h = HNC(3, 7); h[1] = 5`, `h` is 5, 7, 7, 7 (4 elements). No error is raised.
+Comparisons (`<`, `>`, `<=`, `>=`, `==`, `~=`) use the newest element of each side, in either operand order:
+- `==` between two series compares only their newest elements, so `HNC(3, 7) == HNC(5, 7)` is true.
+- An empty series compares as 0.
+- Comparing a series with a string, boolean, enum constant or Lua table is silently false, even for `<` (`HNC(3, 7) < "8"` is false, with no error).
+
+Plain Lua tables still raise an error with operators.
+
+Series are read-only. `h[1] = 5` raises "Series are read-only: s[1] = v is not supported. To add a newest value use s = ArrayUnshift(s, v), to add an oldest value use s = ArrayAdd(s, v), or build a Lua table." The compiler rejects it when it can see the series; otherwise it is a runtime error.
 
 **HaasSignal**
 
