@@ -16,7 +16,7 @@
 
 # Array Helpers
 
-The array helpers accept Lua tables, HaasNumberCollections and engine series (price data) alike, with identical results; the result keeps the input's form. Exceptions: `ArrayRemove` accepts Lua tables only, and `ArrayConcat` needs an engine collection first when mixing forms.
+The array helpers accept Lua tables, HaasNumberCollections and engine series (price data) alike, with identical results; the result keeps the input's form, and `ArrayConcat` of a Lua table with an engine collection gives an engine collection.
 
 ## ArrayAdd
 
@@ -68,7 +68,7 @@ Returns true if the input has any elements or if 'value' is defined when any of 
 ArrayConcat(array1, array2)
 ```
 
-Concatenates two arrays; the first array's elements come first. If `array1` is a Lua table, `array2` must be a Lua table too: a Lua table followed by a HaasNumberCollection or engine series stops the script ("Object reference not set to an instance of an object.") without `pcall` catching it. To mix forms, put the engine collection first; the result is then an engine collection.
+Concatenates two arrays; the first array's elements come first. Two Lua tables give a Lua table; any mix of a Lua table with a HaasNumberCollection or engine series, in either order, gives an engine collection.
 
 **Parameters:**
 
@@ -233,7 +233,7 @@ Removes an element from a specified index.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `input` | `dynamic` | Yes | Source data. Lua tables only: a HaasNumberCollection or an engine series stops the script ("Object reference not set to an instance of an object.") without `pcall` catching it. Convert to a Lua table first. |
+| `input` | `dynamic` | Yes | Source data: a Lua table, a HaasNumberCollection or an engine series. The result keeps the input's form. |
 | `index` | `number` | Yes | Index of the element to remove. |
 
 **Returns:** `dynamic`
